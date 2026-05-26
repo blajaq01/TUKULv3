@@ -19,6 +19,8 @@ export function AppNav() {
           <nav className="flex items-center gap-3 text-sm text-zinc-700">
             <Link href="/app">Dashboard</Link>
             <Link href="/app/projects">Projects</Link>
+            {profile?.is_contractor ? <Link href="/app/contractor">Contractor</Link> : null}
+            {profile?.is_admin ? <Link href="/app/admin/contractors">Admin</Link> : null}
           </nav>
         </div>
         <div className="flex items-center gap-3">
