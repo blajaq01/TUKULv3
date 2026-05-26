@@ -23,6 +23,7 @@ type BidRow = {
   total_price: number;
   status: string;
   created_at: string;
+  details: Record<string, unknown> | null;
 };
 
 function ProjectDetailLoader({
@@ -38,6 +39,10 @@ function ProjectDetailLoader({
 }) {
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [bids, setBids] = useState<BidRow[]>([]);
+  const [myBid, setMyBid] = useState<BidRow | null>(null);
+  const [contractorVerificationStatus, setContractorVerificationStatus] = useState<
+    "draft" | "submitted" | "approved" | "rejected" | null
+  >(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,15 +61,50 @@ function ProjectDetailLoader({
       if (projectError) throw projectError;
       setProject(projectData as ProjectRow);
 
+      if (isContractor && !isAdmin) {
+        const { data: cp, error: cpError } = await supabase
+          .from("contractor_profiles")
+          .select("verification_status")
+          .eq("contractor_id", userId)
+          .maybeSingle();
+
+        if (!isMounted) return;
+        if (cpError) throw cpError;
+        setContractorVerificationStatus(
+          (cp?.verification_status as
+            | "draft"
+            | "submitted"
+            | "approved"
+            | "rejected"
+            | undefined) ?? null,
+        );
+
+        const { data: bidData, error: bidError } = await supabase
+          .from("bids")
+          .select("id,contractor_id,total_price,status,created_at,details")
+          .eq("project_id", projectId)
+          .eq("contractor_id", userId)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (!isMounted) return;
+        if (bidError) throw bidError;
+        setMyBid(((bidData ?? [])[0] as BidRow | undefined) ?? null);
+        setBids([]);
+        return;
+      }
+
       const canLoadBids = isAdmin || (!isContractor && projectData?.owner_id === userId);
       if (!canLoadBids) {
         setBids([]);
+        setMyBid(null);
         return;
       }
 
       const { data: bidData, error: bidError } = await supabase
         .from("bids")
-        .select("id,contractor_id,total_price,status,created_at")
+        .select("id,contractor_id,total_price,status,created_at,details")
         .eq("project_id", projectId)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
@@ -72,6 +112,7 @@ function ProjectDetailLoader({
       if (!isMounted) return;
       if (bidError) throw bidError;
       setBids((bidData ?? []) as BidRow[]);
+      setMyBid(null);
     };
 
     run()
@@ -139,12 +180,13 @@ function ProjectDetailLoader({
       </div>
 
       {isContractor ? (
-        <div className="rounded-2xl border border-black/5 bg-white p-6">
-          <h2 className="text-sm font-semibold">Bid on this project</h2>
-          <p className="mt-2 text-sm text-zinc-600">
-            Bid submission and milestone breakdown will be implemented next.
-          </p>
-        </div>
+        <BidBox
+          key={`${myBid?.id ?? "new"}:${contractorVerificationStatus ?? "unknown"}`}
+          projectId={projectId}
+          contractorId={userId}
+          myBid={myBid}
+          verificationStatus={contractorVerificationStatus}
+        />
       ) : null}
 
       {isOwner || isAdmin ? (
@@ -176,6 +218,144 @@ function ProjectDetailLoader({
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function BidBox({
+  projectId,
+  contractorId,
+  myBid,
+  verificationStatus,
+}: {
+  projectId: string;
+  contractorId: string;
+  myBid: BidRow | null;
+  verificationStatus: "draft" | "submitted" | "approved" | "rejected" | null;
+}) {
+  const [totalPrice, setTotalPrice] = useState(
+    myBid?.total_price ? String(myBid.total_price) : "",
+  );
+  const [coverNote, setCoverNote] = useState(
+    typeof myBid?.details?.cover_note === "string" ? (myBid.details.cover_note as string) : "",
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isApproved = verificationStatus === "approved";
+  const canSubmit = isApproved && (!myBid || myBid.status === "pending");
+
+  return (
+    <div className="rounded-2xl border border-black/5 bg-white p-6">
+      <h2 className="text-sm font-semibold">Bid on this project</h2>
+      <p className="mt-2 text-sm text-zinc-600">
+        {verificationStatus === "approved"
+          ? "Submit a total price and optional note. Milestone breakdown comes next."
+          : "Contractor verification must be approved before bidding."}
+      </p>
+
+      {myBid ? (
+        <div className="mt-4 rounded-xl bg-zinc-50 p-4 text-sm text-zinc-700">
+          <div className="font-medium">Your current bid</div>
+          <div className="mt-1">
+            Status: {myBid.status} • Total: RM {Number(myBid.total_price).toFixed(2)}
+          </div>
+        </div>
+      ) : null}
+
+      <form
+        className="mt-6 space-y-4"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setIsSubmitting(true);
+          setError(null);
+          try {
+            const price = Number(totalPrice);
+            if (!Number.isFinite(price) || price <= 0) {
+              setError("Total price must be a positive number.");
+              return;
+            }
+
+            const details = { cover_note: coverNote.trim() ? coverNote.trim() : null };
+
+            if (myBid?.id) {
+              const { error: updateError } = await supabase
+                .from("bids")
+                .update({
+                  total_price: price,
+                  details,
+                  updated_by: contractorId,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", myBid.id);
+              if (updateError) throw updateError;
+            } else {
+              const { error: insertError } = await supabase.from("bids").insert({
+                project_id: projectId,
+                contractor_id: contractorId,
+                total_price: price,
+                status: "pending",
+                details,
+                created_by: contractorId,
+                updated_by: contractorId,
+              });
+              if (insertError) throw insertError;
+            }
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to submit bid.");
+          } finally {
+            setIsSubmitting(false);
+          }
+        }}
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Total price (RM)</label>
+            <input
+              className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+              value={totalPrice}
+              onChange={(e) => setTotalPrice(e.target.value)}
+              inputMode="decimal"
+              disabled={!canSubmit || isSubmitting}
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Bid status</label>
+            <input
+              className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm disabled:bg-zinc-50"
+              value={myBid?.status ?? "pending"}
+              disabled
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Cover note</label>
+          <textarea
+            className="min-h-24 w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+            value={coverNote}
+            onChange={(e) => setCoverNote(e.target.value)}
+            disabled={!canSubmit || isSubmitting}
+          />
+        </div>
+
+        {error ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        ) : null}
+
+        <div className="flex items-center justify-end">
+          <button
+            type="submit"
+            className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+            disabled={!canSubmit || isSubmitting}
+          >
+            {myBid ? "Update bid" : "Submit bid"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
