@@ -16,21 +16,21 @@ type ProjectRow = {
   owner_id: string;
 };
 
-export default function ProjectsPage() {
-  const { user } = useAuth();
-  const isContractor = useMemo(
-    () => Boolean(user?.user_metadata?.is_contractor),
-    [user],
-  );
-
+function ProjectsList({
+  userId,
+  isContractor,
+  isAdmin,
+}: {
+  userId: string;
+  isContractor: boolean;
+  isAdmin: boolean;
+}) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectRow[]>([]);
 
   useEffect(() => {
     let isMounted = true;
-    setIsLoading(true);
-    setError(null);
 
     const run = async () => {
       const query = supabase
@@ -39,9 +39,11 @@ export default function ProjectsPage() {
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
-      const { data, error: selectError } = isContractor
-        ? await query.eq("status", "open")
-        : await query.eq("owner_id", user?.id ?? "");
+      const { data, error: selectError } = isAdmin
+        ? await query
+        : isContractor
+          ? await query.eq("status", "open")
+          : await query.eq("owner_id", userId);
 
       if (!isMounted) return;
       if (selectError) {
@@ -65,25 +67,10 @@ export default function ProjectsPage() {
     return () => {
       isMounted = false;
     };
-  }, [isContractor, user?.id]);
+  }, [isAdmin, isContractor, userId]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Projects</h1>
-          <p className="text-sm text-zinc-600">
-            {isContractor ? "Browse open projects to bid on." : "Manage your posted projects."}
-          </p>
-        </div>
-        <Link
-          href="/app/projects/new"
-          className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-        >
-          Post a project
-        </Link>
-      </div>
-
+    <>
       {error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
@@ -121,6 +108,46 @@ export default function ProjectsPage() {
           ) : null}
         </div>
       </div>
+    </>
+  );
+}
+
+export default function ProjectsPage() {
+  const { user, profile } = useAuth();
+  const isContractor = useMemo(
+    () => Boolean(profile?.is_contractor),
+    [profile?.is_contractor],
+  );
+  const isAdmin = Boolean(profile?.is_admin);
+  const listKey = `${user?.id ?? "anon"}:${isAdmin ? "a" : isContractor ? "c" : "o"}`;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Projects</h1>
+          <p className="text-sm text-zinc-600">
+            {isAdmin
+              ? "Superadmin view of all projects."
+              : isContractor
+                ? "Browse open projects to bid on."
+                : "Manage your posted projects."}
+          </p>
+        </div>
+        <Link
+          href="/app/projects/new"
+          className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+        >
+          Post a project
+        </Link>
+      </div>
+
+      <ProjectsList
+        key={listKey}
+        userId={user?.id ?? ""}
+        isContractor={isContractor}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 }

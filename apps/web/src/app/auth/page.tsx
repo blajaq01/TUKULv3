@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { Suspense } from "react";
 
 import { AuthForm } from "@/components/AuthForm";
 
@@ -19,7 +20,9 @@ export default function AuthPage() {
           Sign in to manage projects, bids, milestones, and escrow releases.
         </p>
         <div className="mt-8">
-          <AuthForm />
+          <Suspense fallback={null}>
+            <AuthForm />
+          </Suspense>
         </div>
       </div>
     </div>

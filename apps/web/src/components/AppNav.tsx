@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 
 export function AppNav() {
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const router = useRouter();
 
   return (
@@ -24,6 +24,7 @@ export function AppNav() {
         <div className="flex items-center gap-3">
           <span className="hidden text-sm text-zinc-600 sm:inline">
             {user?.email}
+            {profile?.is_admin ? " (Superadmin)" : ""}
           </span>
           <button
             type="button"

@@ -4,13 +4,13 @@ import Link from "next/link";
 
 import { useAuth } from "@/components/AuthProvider";
 
-function getRoleLabel(user: { user_metadata?: Record<string, unknown> } | null) {
-  const isContractor = Boolean(user?.user_metadata?.is_contractor);
-  return isContractor ? "Contractor" : "Property owner";
+function getRoleLabel(profile: { is_contractor: boolean; is_admin: boolean } | null) {
+  if (profile?.is_admin) return "Superadmin";
+  return profile?.is_contractor ? "Contractor" : "Property owner";
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   return (
     <div className="space-y-8">
@@ -18,7 +18,7 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-2">
           <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-sm text-zinc-600">
-            Signed in as {user?.email} • {getRoleLabel(user)}
+            Signed in as {user?.email} • {getRoleLabel(profile)}
           </p>
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
