@@ -40,11 +40,13 @@ function ProjectDetailLoader({
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [bids, setBids] = useState<BidRow[]>([]);
   const [myBid, setMyBid] = useState<BidRow | null>(null);
+  const [contractId, setContractId] = useState<string | null>(null);
   const [contractorVerificationStatus, setContractorVerificationStatus] = useState<
     "draft" | "submitted" | "approved" | "rejected" | null
   >(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOwnerSaving, setIsOwnerSaving] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -101,6 +103,17 @@ function ProjectDetailLoader({
         setMyBid(null);
         return;
       }
+
+      const { data: contractData, error: contractError } = await supabase
+        .from("contracts")
+        .select("id")
+        .eq("project_id", projectId)
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      if (!isMounted) return;
+      if (contractError) throw contractError;
+      setContractId(contractData?.id ?? null);
 
       const { data: bidData, error: bidError } = await supabase
         .from("bids")
@@ -204,8 +217,75 @@ function ProjectDetailLoader({
                     </div>
                     <div className="mt-1 text-sm text-zinc-600">{b.status}</div>
                   </div>
-                  <div className="text-sm font-semibold">
-                    RM {Number(b.total_price).toFixed(2)}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="text-sm font-semibold">RM {Number(b.total_price).toFixed(2)}</div>
+                    <button
+                      type="button"
+                      className="rounded-lg bg-black px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+                      disabled={
+                        isOwnerSaving ||
+                        Boolean(contractId) ||
+                        b.status !== "pending" ||
+                        (!isOwner && !isAdmin)
+                      }
+                      onClick={async () => {
+                        setIsOwnerSaving(true);
+                        setError(null);
+                        try {
+                          const now = new Date().toISOString();
+
+                          const { error: acceptError } = await supabase
+                            .from("bids")
+                            .update({ status: "selected", updated_at: now, updated_by: userId })
+                            .eq("id", b.id);
+                          if (acceptError) throw acceptError;
+
+                          const { error: rejectError } = await supabase
+                            .from("bids")
+                            .update({ status: "rejected", updated_at: now, updated_by: userId })
+                            .eq("project_id", projectId)
+                            .neq("id", b.id)
+                            .eq("status", "pending");
+                          if (rejectError) throw rejectError;
+
+                          const { data: createdContract, error: contractCreateError } = await supabase
+                            .from("contracts")
+                            .insert({
+                              project_id: projectId,
+                              bid_id: b.id,
+                              agreed_price: b.total_price,
+                              created_by: userId,
+                              updated_by: userId,
+                            })
+                            .select("id")
+                            .single();
+                          if (contractCreateError) throw contractCreateError;
+
+                          const { error: projectUpdateError } = await supabase
+                            .from("projects")
+                            .update({ status: "in_progress", updated_at: now, updated_by: userId })
+                            .eq("id", projectId);
+                          if (projectUpdateError) throw projectUpdateError;
+
+                          setContractId(createdContract.id);
+                          setBids((prev) =>
+                            prev.map((x) =>
+                              x.id === b.id
+                                ? { ...x, status: "selected" }
+                                : x.status === "pending"
+                                  ? { ...x, status: "rejected" }
+                                  : x,
+                            ),
+                          );
+                        } catch (e) {
+                          setError(e instanceof Error ? e.message : "Failed to accept bid.");
+                        } finally {
+                          setIsOwnerSaving(false);
+                        }
+                      }}
+                    >
+                      Accept bid
+                    </button>
                   </div>
                 </div>
               </div>
