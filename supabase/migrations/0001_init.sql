@@ -331,9 +331,28 @@ using (
   )
 );
 
-create policy milestones_party_write
+create policy milestones_party_insert
 on public.milestones
-for insert, update, delete
+for insert
+to authenticated
+with check (
+  deleted_at is null
+  and auth.uid() in (
+    select b.contractor_id
+    from public.contracts c
+    join public.bids b on b.id = c.bid_id
+    where c.id = milestones.contract_id and c.deleted_at is null and b.deleted_at is null
+    union
+    select p.owner_id
+    from public.contracts c
+    join public.projects p on p.id = c.project_id
+    where c.id = milestones.contract_id and c.deleted_at is null and p.deleted_at is null
+  )
+);
+
+create policy milestones_party_update
+on public.milestones
+for update
 to authenticated
 using (
   deleted_at is null
@@ -350,6 +369,25 @@ using (
   )
 )
 with check (
+  deleted_at is null
+  and auth.uid() in (
+    select b.contractor_id
+    from public.contracts c
+    join public.bids b on b.id = c.bid_id
+    where c.id = milestones.contract_id and c.deleted_at is null and b.deleted_at is null
+    union
+    select p.owner_id
+    from public.contracts c
+    join public.projects p on p.id = c.project_id
+    where c.id = milestones.contract_id and c.deleted_at is null and p.deleted_at is null
+  )
+);
+
+create policy milestones_party_delete
+on public.milestones
+for delete
+to authenticated
+using (
   deleted_at is null
   and auth.uid() in (
     select b.contractor_id
