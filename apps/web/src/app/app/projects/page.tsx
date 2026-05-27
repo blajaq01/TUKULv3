@@ -80,40 +80,47 @@ function ProjectsList({
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-black/5 bg-white">
-        <div className="border-b border-black/5 px-6 py-4 text-sm font-medium text-zinc-700">
-          {isLoading ? "Loading…" : `${projects.length} project(s)`}
+      <div className="rounded-3xl border border-black/5 bg-white">
+        <div className="flex items-center justify-between gap-3 border-b border-black/5 px-6 py-4">
+          <div className="text-sm font-medium text-zinc-700">{isLoading ? "Loading…" : "Project list"}</div>
+          <div className="text-xs text-zinc-500">{isLoading ? "—" : `${projects.length} total`}</div>
         </div>
         <div className="divide-y divide-black/5">
           {projects.map((p) => (
             <Link
               key={p.id}
               href={`/app/projects/${p.id}`}
-              className="block px-6 py-4 hover:bg-zinc-50"
+              className="block px-6 py-5 transition-colors hover:bg-zinc-50"
             >
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold">{p.title}</div>
-                  <div className="mt-1 text-sm text-zinc-600">
-                    {p.location ?? "Location not set"} • {p.status} •{" "}
-                    {p.visibility === "invite_only" ? "invite-only" : "public"}
+                  <div className="truncate text-base font-semibold text-zinc-900">{p.title}</div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-600">
+                    <span>{p.location ?? "Location not set"}</span>
+                    <span className="text-zinc-300">•</span>
+                    <span className="capitalize">{p.status.replaceAll("_", " ")}</span>
+                    <span className="text-zinc-300">•</span>
+                    <span>{p.visibility === "invite_only" ? "invite-only" : "public"}</span>
                   </div>
                   {p.target_start_date || p.target_end_date ? (
-                    <div className="mt-1 text-xs text-zinc-500">
-                      Target: {p.target_start_date ? p.target_start_date : "—"} →{" "}
-                      {p.target_end_date ? p.target_end_date : "—"}
+                    <div className="mt-2 text-xs text-zinc-500">
+                      Target: {p.target_start_date ? p.target_start_date : "—"} → {p.target_end_date ? p.target_end_date : "—"}
                     </div>
                   ) : null}
                 </div>
-                <div className="text-sm font-medium text-zinc-900">
+                <div className="text-right">
+                  <div className="text-base font-semibold text-zinc-900">
                   {typeof p.budget === "number" ? `RM ${p.budget.toFixed(2)}` : "—"}
+                  </div>
+                  <div className="mt-1 text-xs text-zinc-500">Budget</div>
                 </div>
               </div>
             </Link>
           ))}
           {!isLoading && projects.length === 0 ? (
-            <div className="px-6 py-10 text-sm text-zinc-600">
-              No projects yet.
+            <div className="px-6 py-12">
+              <div className="text-sm font-semibold text-zinc-900">No projects yet</div>
+              <div className="mt-1 text-sm text-zinc-600">Create your first project to start receiving bids.</div>
             </div>
           ) : null}
         </div>
@@ -135,7 +142,7 @@ export default function ProjectsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Projects</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Projects</h1>
           <p className="text-sm text-zinc-600">
             {isAdmin
               ? "Superadmin view of all projects."
@@ -146,7 +153,7 @@ export default function ProjectsPage() {
         </div>
         <Link
           href="/app/projects/new"
-          className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+          className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
         >
           Post a project
         </Link>

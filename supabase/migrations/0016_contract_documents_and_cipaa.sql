@@ -1,22 +1,34 @@
 do $$
 declare
-  v_conname text;
+  r record;
 begin
-  select c.conname into v_conname
-  from pg_constraint c
-  where c.conrelid = 'public.disputes'::regclass
-    and c.contype = 'c'
-    and pg_get_constraintdef(c.oid) ilike '%status in%';
+  execute 'alter table public.disputes drop constraint if exists disputes_status_check';
 
-  if v_conname is not null then
-    execute format('alter table public.disputes drop constraint %I', v_conname);
+  for r in
+    select c.conname
+    from pg_constraint c
+    where c.conrelid = 'public.disputes'::regclass
+      and c.contype = 'c'
+      and pg_get_constraintdef(c.oid) ilike '%status%'
+  loop
+    execute format('alter table public.disputes drop constraint if exists %I', r.conname);
+  end loop;
+
+  if not exists (
+    select 1
+    from pg_constraint c
+    where c.conrelid = 'public.disputes'::regclass
+      and c.contype = 'c'
+      and c.conname = 'disputes_status_check'
+  ) then
+    execute $q$
+      alter table public.disputes
+      add constraint disputes_status_check
+      check (status in ('open', 'in_review', 'cipaa_claim_sent', 'cipaa_response_received', 'adjudication_requested', 'resolved', 'cancelled'))
+    $q$;
   end if;
 end
 $$;
-
-alter table public.disputes
-add constraint disputes_status_check
-check (status in ('open', 'in_review', 'cipaa_claim_sent', 'cipaa_response_received', 'adjudication_requested', 'resolved', 'cancelled'));
 
 alter table public.disputes
 add column if not exists claim_amount numeric(12,2) check (claim_amount is null or claim_amount >= 0),
@@ -79,4 +91,3 @@ using (
     or (created_by = auth.uid() and contract_id in (select c.id from public.contracts c join public.projects p on p.id = c.project_id where p.owner_id = auth.uid() and p.deleted_at is null and c.deleted_at is null))
   )
 );
-

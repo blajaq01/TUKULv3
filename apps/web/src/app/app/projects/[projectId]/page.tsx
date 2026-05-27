@@ -354,12 +354,34 @@ function ProjectDetailLoader({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-black/5 bg-white p-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-xl font-semibold tracking-tight">{project.title}</h1>
-          <div className="text-sm text-zinc-600">
-            {project.location ?? "Location not set"} • {project.status} •{" "}
-            {project.visibility === "invite_only" ? "invite-only" : "public"}
+      <div className="rounded-3xl border border-black/5 bg-white p-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <h1 className="truncate text-2xl font-semibold tracking-tight text-zinc-900">{project.title}</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-600">
+              <span>{project.location ?? "Location not set"}</span>
+              <span className="text-zinc-300">•</span>
+              <span className="capitalize">{project.status.replaceAll("_", " ")}</span>
+              <span className="text-zinc-300">•</span>
+              <span>{project.visibility === "invite_only" ? "invite-only" : "public"}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {contractId ? (
+              <Link
+                href={`/app/contracts/${contractId}`}
+                className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+              >
+                Open contract
+              </Link>
+            ) : null}
+            <Link
+              href="/app/projects"
+              className="rounded-xl border border-black/10 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
+            >
+              Back to projects
+            </Link>
           </div>
         </div>
 
@@ -369,37 +391,33 @@ function ProjectDetailLoader({
           </div>
         ) : null}
 
-        <div className="mt-6 flex flex-wrap gap-3 text-sm">
-          <div className="rounded-lg bg-zinc-50 px-3 py-2">
-            Budget:{" "}
-            {typeof project.budget === "number"
-              ? `RM ${project.budget.toFixed(2)}`
-              : "—"}
-          </div>
-          <div className="rounded-lg bg-zinc-50 px-3 py-2">
-            Target: {project.target_start_date ?? "—"} → {project.target_end_date ?? "—"}
-          </div>
-          <div className="rounded-lg bg-zinc-50 px-3 py-2">
-            Categories: {categoryNames.length > 0 ? categoryNames.join(", ") : "—"}
-          </div>
-          {projectHealth ? (
-            <div className="rounded-lg bg-zinc-50 px-3 py-2">
-              Health: deposit RM {Number(projectHealth.deposit_total).toFixed(2)} • released RM{" "}
-              {Number(projectHealth.ledger_release_total).toFixed(2)} • pending RM{" "}
-              {Number(projectHealth.pending_release_total).toFixed(2)} • disputes {projectHealth.disputed_count}
+        <div className="mt-6 grid gap-3 md:grid-cols-4">
+          <div className="rounded-2xl bg-zinc-50 p-5">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Budget</div>
+            <div className="mt-2 text-lg font-semibold text-zinc-900">
+              {typeof project.budget === "number" ? `RM ${project.budget.toFixed(2)}` : "—"}
             </div>
-          ) : null}
-          <div className="rounded-lg bg-zinc-50 px-3 py-2">
-            Project ID: {project.id}
           </div>
-          {contractId ? (
-            <Link
-              href={`/app/contracts/${contractId}`}
-              className="rounded-lg bg-black px-3 py-2 font-medium text-white hover:bg-zinc-800"
-            >
-              Open contract
-            </Link>
-          ) : null}
+          <div className="rounded-2xl bg-zinc-50 p-5">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Target</div>
+            <div className="mt-2 text-sm font-semibold text-zinc-900">
+              {project.target_start_date ?? "—"} → {project.target_end_date ?? "—"}
+            </div>
+          </div>
+          <div className="rounded-2xl bg-zinc-50 p-5">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Categories</div>
+            <div className="mt-2 text-sm font-semibold text-zinc-900">
+              {categoryNames.length > 0 ? categoryNames.join(", ") : "—"}
+            </div>
+          </div>
+          <div className="rounded-2xl bg-zinc-50 p-5">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Project health</div>
+            <div className="mt-2 text-sm font-semibold text-zinc-900">
+              {projectHealth
+                ? `Disputes ${projectHealth.disputed_count} • Pending RM ${Number(projectHealth.pending_release_total).toFixed(2)}`
+                : "—"}
+            </div>
+          </div>
         </div>
       </div>
 
