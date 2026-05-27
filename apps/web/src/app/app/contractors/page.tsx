@@ -29,6 +29,12 @@ function ContractorsLoader() {
   const [rows, setRows] = useState<ContractorDirectoryRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [verification, setVerification] = useState<"any" | "approved">("approved");
+  const [cidbGrade, setCidbGrade] = useState<string>("any");
+  const [serviceArea, setServiceArea] = useState<string>("any");
+  const [specialty, setSpecialty] = useState<string>("any");
+  const [minRating, setMinRating] = useState<string>("any");
 
   useEffect(() => {
     let isMounted = true;
@@ -60,6 +66,53 @@ function ContractorsLoader() {
     };
   }, []);
 
+  const filterOptions = {
+    cidbGrades: Array.from(
+      new Set(rows.map((r) => r.cidb_grade).filter((x): x is string => typeof x === "string" && x.trim().length > 0)),
+    ).sort((a, b) => a.localeCompare(b)),
+    serviceAreas: Array.from(
+      new Set(
+        rows
+          .flatMap((r) => r.service_areas ?? [])
+          .filter((x): x is string => typeof x === "string" && x.trim().length > 0),
+      ),
+    ).sort((a, b) => a.localeCompare(b)),
+    specialties: Array.from(
+      new Set(
+        rows
+          .flatMap((r) => r.specialties ?? [])
+          .filter((x): x is string => typeof x === "string" && x.trim().length > 0),
+      ),
+    ).sort((a, b) => a.localeCompare(b)),
+  };
+
+  const filteredRows = rows.filter((c) => {
+    if (verification === "approved" && c.verification_status !== "approved") return false;
+    if (cidbGrade !== "any" && (c.cidb_grade ?? "") !== cidbGrade) return false;
+    if (serviceArea !== "any" && !(c.service_areas ?? []).includes(serviceArea)) return false;
+    if (specialty !== "any" && !(c.specialties ?? []).includes(specialty)) return false;
+    if (minRating !== "any") {
+      const min = Number(minRating);
+      if (!Number.isFinite(min)) return false;
+      const rating = typeof c.avg_rating === "number" ? c.avg_rating : 0;
+      if (rating < min) return false;
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      const hay = [
+        c.business_name ?? "",
+        c.full_name ?? "",
+        c.cidb_grade ?? "",
+        ...(c.specialties ?? []),
+        ...(c.service_areas ?? []),
+      ]
+        .join(" ")
+        .toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -75,12 +128,101 @@ function ContractorsLoader() {
         </div>
       ) : null}
 
+      <div className="rounded-2xl border border-black/5 bg-white p-6">
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-1.5 md:col-span-2">
+            <label className="text-sm font-medium">Search</label>
+            <input
+              className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Business name, specialty, area…"
+              disabled={isLoading}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Verification</label>
+            <select
+              className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+              value={verification}
+              onChange={(e) => setVerification(e.target.value as typeof verification)}
+              disabled={isLoading}
+            >
+              <option value="approved">Approved only</option>
+              <option value="any">Any status</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">CIDB grade</label>
+            <select
+              className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+              value={cidbGrade}
+              onChange={(e) => setCidbGrade(e.target.value)}
+              disabled={isLoading}
+            >
+              <option value="any">Any</option>
+              {filterOptions.cidbGrades.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Service area</label>
+            <select
+              className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+              value={serviceArea}
+              onChange={(e) => setServiceArea(e.target.value)}
+              disabled={isLoading}
+            >
+              <option value="any">Any</option>
+              {filterOptions.serviceAreas.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Specialty</label>
+            <select
+              className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+              value={specialty}
+              onChange={(e) => setSpecialty(e.target.value)}
+              disabled={isLoading}
+            >
+              <option value="any">Any</option>
+              {filterOptions.specialties.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Min rating</label>
+            <select
+              className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+              value={minRating}
+              onChange={(e) => setMinRating(e.target.value)}
+              disabled={isLoading}
+            >
+              <option value="any">Any</option>
+              <option value="4">4.0+</option>
+              <option value="4.5">4.5+</option>
+              <option value="5">5.0</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div className="rounded-2xl border border-black/5 bg-white">
         <div className="border-b border-black/5 px-6 py-4 text-sm font-medium text-zinc-700">
-          {isLoading ? "Loading…" : `${rows.length} contractor(s)`}
+          {isLoading ? "Loading…" : `${filteredRows.length} contractor(s)`}
         </div>
         <div className="divide-y divide-black/5">
-          {rows.map((c) => (
+          {filteredRows.map((c) => (
             <div key={c.contractor_id} className="px-6 py-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
@@ -103,7 +245,7 @@ function ContractorsLoader() {
               </div>
             </div>
           ))}
-          {!isLoading && rows.length === 0 ? (
+          {!isLoading && filteredRows.length === 0 ? (
             <div className="px-6 py-10 text-sm text-zinc-600">No contractors yet.</div>
           ) : null}
         </div>

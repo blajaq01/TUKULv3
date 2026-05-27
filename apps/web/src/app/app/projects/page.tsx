@@ -12,6 +12,9 @@ type ProjectRow = {
   status: string;
   location: string | null;
   budget: number | null;
+  visibility: "public" | "invite_only";
+  target_start_date: string | null;
+  target_end_date: string | null;
   created_at: string;
   owner_id: string;
 };
@@ -35,7 +38,7 @@ function ProjectsList({
     const run = async () => {
       const query = supabase
         .from("projects")
-        .select("id,title,status,location,budget,created_at,owner_id")
+        .select("id,title,status,location,budget,visibility,target_start_date,target_end_date,created_at,owner_id")
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
@@ -92,8 +95,15 @@ function ProjectsList({
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold">{p.title}</div>
                   <div className="mt-1 text-sm text-zinc-600">
-                    {p.location ?? "Location not set"} • {p.status}
+                    {p.location ?? "Location not set"} • {p.status} •{" "}
+                    {p.visibility === "invite_only" ? "invite-only" : "public"}
                   </div>
+                  {p.target_start_date || p.target_end_date ? (
+                    <div className="mt-1 text-xs text-zinc-500">
+                      Target: {p.target_start_date ? p.target_start_date : "—"} →{" "}
+                      {p.target_end_date ? p.target_end_date : "—"}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="text-sm font-medium text-zinc-900">
                   {typeof p.budget === "number" ? `RM ${p.budget.toFixed(2)}` : "—"}

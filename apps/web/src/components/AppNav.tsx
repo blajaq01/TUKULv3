@@ -21,8 +21,11 @@ export function AppNav() {
             <Link href="/app/notifications">Notifications</Link>
             <Link href="/app/projects">Projects</Link>
             <Link href="/app/contractors">Contractors</Link>
+            <Link href="/app/templates">Templates</Link>
             {profile?.is_contractor ? <Link href="/app/contractor">Contractor</Link> : null}
             {profile?.is_admin ? <Link href="/app/admin/contractors">Admin</Link> : null}
+            {profile?.is_admin ? <Link href="/app/admin/integrations">Integrations</Link> : null}
+            {profile?.is_admin ? <Link href="/app/admin/outbox">Outbox</Link> : null}
           </nav>
         </div>
         <div className="flex items-center gap-3">
