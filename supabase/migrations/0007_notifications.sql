@@ -49,6 +49,10 @@ as $$
 declare
   v_id uuid;
 begin
+  if p_recipient_id is null then
+    return null;
+  end if;
+
   insert into public.notifications (recipient_id, type, title, body, data)
   values (p_recipient_id, p_type, p_title, p_body, p_data)
   returning id into v_id;
@@ -64,10 +68,18 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_admin_id uuid;
 begin
   if new.verification_status = 'submitted' and (old.verification_status is distinct from new.verification_status) then
+    select id into v_admin_id
+    from public.users
+    where is_admin = true and deleted_at is null
+    order by created_at asc
+    limit 1;
+
     perform public.notify(
-      (select id from public.users where is_admin = true and deleted_at is null order by created_at asc limit 1),
+      v_admin_id,
       'contractor_verification_submitted',
       'Contractor verification submitted',
       coalesce(new.business_name, 'A contractor') || ' submitted verification.',
