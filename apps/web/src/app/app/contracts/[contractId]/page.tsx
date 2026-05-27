@@ -56,6 +56,15 @@ type LedgerRow = {
   created_at: string;
 };
 
+type MessageRow = {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  project_id: string | null;
+  content: string;
+  sent_at: string;
+};
+
 function toDateInputValue(value: string | null) {
   if (!value) return "";
   return value.slice(0, 10);
@@ -98,6 +107,7 @@ function ContractLoader({
   const [bid, setBid] = useState<BidRow | null>(null);
   const [milestones, setMilestones] = useState<MilestoneRow[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<LedgerRow[]>([]);
+  const [messages, setMessages] = useState<MessageRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -159,6 +169,24 @@ function ContractLoader({
       if (!isMounted) return;
       if (ledgerError) throw ledgerError;
       setLedgerEntries((ledgerData ?? []) as LedgerRow[]);
+
+      const otherUserId = (bidData as BidRow).contractor_id === userId
+        ? (projectData as ProjectRow).owner_id
+        : (bidData as BidRow).contractor_id;
+
+      const { data: messageData, error: messageError } = await supabase
+        .from("messages")
+        .select("id,sender_id,receiver_id,project_id,content,sent_at")
+        .eq("project_id", (projectData as ProjectRow).id)
+        .or(
+          `and(sender_id.eq.${userId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${userId})`,
+        )
+        .order("sent_at", { ascending: true })
+        .limit(200);
+
+      if (!isMounted) return;
+      if (messageError) throw messageError;
+      setMessages((messageData ?? []) as MessageRow[]);
     };
 
     run()
@@ -174,7 +202,7 @@ function ContractLoader({
     return () => {
       isMounted = false;
     };
-  }, [contractId]);
+  }, [contractId, userId]);
 
   const totalMilestones = useMemo(
     () => milestones.reduce((sum, m) => sum + Number(m.amount), 0),
@@ -361,6 +389,18 @@ function ContractLoader({
           ) : null}
         </div>
       </div>
+
+      <MessagesBox
+        disabled={isSaving}
+        userId={userId}
+        projectId={project.id}
+        ownerId={project.owner_id}
+        contractorId={bid.contractor_id}
+        messages={messages}
+        onNewMessage={(m) => setMessages((prev) => [...prev, m])}
+        onError={(msg) => setError(msg)}
+        setSaving={setIsSaving}
+      />
     </div>
   );
 }
@@ -575,6 +615,96 @@ function MilestoneRowView({
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function MessagesBox({
+  disabled,
+  userId,
+  projectId,
+  ownerId,
+  contractorId,
+  messages,
+  onNewMessage,
+  onError,
+  setSaving,
+}: {
+  disabled: boolean;
+  userId: string;
+  projectId: string;
+  ownerId: string;
+  contractorId: string;
+  messages: MessageRow[];
+  onNewMessage: (m: MessageRow) => void;
+  onError: (msg: string) => void;
+  setSaving: (v: boolean) => void;
+}) {
+  const otherUserId = userId === contractorId ? ownerId : contractorId;
+  const [text, setText] = useState("");
+
+  return (
+    <div className="rounded-2xl border border-black/5 bg-white">
+      <div className="border-b border-black/5 px-6 py-4 text-sm font-semibold">Messages</div>
+      <div className="max-h-[420px] space-y-3 overflow-auto px-6 py-4">
+        {messages.map((m) => (
+          <div
+            key={m.id}
+            className={`max-w-[80%] rounded-xl px-4 py-2 text-sm ${
+              m.sender_id === userId ? "ml-auto bg-black text-white" : "bg-zinc-100 text-zinc-900"
+            }`}
+          >
+            <div className="whitespace-pre-wrap leading-6">{m.content}</div>
+            <div className="mt-1 text-xs opacity-70">{new Date(m.sent_at).toLocaleString()}</div>
+          </div>
+        ))}
+        {messages.length === 0 ? (
+          <div className="text-sm text-zinc-600">No messages yet.</div>
+        ) : null}
+      </div>
+      <form
+        className="flex gap-2 border-t border-black/5 px-6 py-4"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const content = text.trim();
+          if (!content) return;
+          setSaving(true);
+          try {
+            const { data, error } = await supabase
+              .from("messages")
+              .insert({
+                sender_id: userId,
+                receiver_id: otherUserId,
+                project_id: projectId,
+                content,
+              })
+              .select("id,sender_id,receiver_id,project_id,content,sent_at")
+              .single();
+            if (error) throw error;
+            onNewMessage(data as MessageRow);
+            setText("");
+          } catch (err) {
+            onError(err instanceof Error ? err.message : "Failed to send message.");
+          } finally {
+            setSaving(false);
+          }
+        }}
+      >
+        <input
+          className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Write a message…"
+          disabled={disabled}
+        />
+        <button
+          type="submit"
+          className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+          disabled={disabled || !text.trim()}
+        >
+          Send
+        </button>
+      </form>
     </div>
   );
 }
