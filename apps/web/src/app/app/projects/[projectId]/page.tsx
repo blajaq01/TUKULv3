@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -63,6 +64,17 @@ function ProjectDetailLoader({
       if (projectError) throw projectError;
       setProject(projectData as ProjectRow);
 
+      const { data: contractData, error: contractError } = await supabase
+        .from("contracts")
+        .select("id")
+        .eq("project_id", projectId)
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      if (!isMounted) return;
+      if (contractError) throw contractError;
+      setContractId(contractData?.id ?? null);
+
       if (isContractor && !isAdmin) {
         const { data: cp, error: cpError } = await supabase
           .from("contractor_profiles")
@@ -103,17 +115,6 @@ function ProjectDetailLoader({
         setMyBid(null);
         return;
       }
-
-      const { data: contractData, error: contractError } = await supabase
-        .from("contracts")
-        .select("id")
-        .eq("project_id", projectId)
-        .is("deleted_at", null)
-        .maybeSingle();
-
-      if (!isMounted) return;
-      if (contractError) throw contractError;
-      setContractId(contractData?.id ?? null);
 
       const { data: bidData, error: bidError } = await supabase
         .from("bids")
@@ -189,6 +190,14 @@ function ProjectDetailLoader({
           <div className="rounded-lg bg-zinc-50 px-3 py-2">
             Project ID: {project.id}
           </div>
+          {contractId ? (
+            <Link
+              href={`/app/contracts/${contractId}`}
+              className="rounded-lg bg-black px-3 py-2 font-medium text-white hover:bg-zinc-800"
+            >
+              Open contract
+            </Link>
+          ) : null}
         </div>
       </div>
 
