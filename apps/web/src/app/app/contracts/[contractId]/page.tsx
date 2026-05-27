@@ -108,6 +108,7 @@ function ContractLoader({
   const [milestones, setMilestones] = useState<MilestoneRow[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<LedgerRow[]>([]);
   const [messages, setMessages] = useState<MessageRow[]>([]);
+  const [reviews, setReviews] = useState<{ reviewer_id: string; reviewee_id: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -187,6 +188,15 @@ function ContractLoader({
       if (!isMounted) return;
       if (messageError) throw messageError;
       setMessages((messageData ?? []) as MessageRow[]);
+
+      const { data: reviewData, error: reviewError } = await supabase
+        .from("reviews")
+        .select("reviewer_id,reviewee_id")
+        .eq("project_id", (projectData as ProjectRow).id);
+
+      if (!isMounted) return;
+      if (reviewError) throw reviewError;
+      setReviews((reviewData ?? []) as { reviewer_id: string; reviewee_id: string }[]);
     };
 
     run()
@@ -319,6 +329,9 @@ function ContractLoader({
 
   const canEditMilestones = isAdmin || isOwner;
   const canWorkOnMilestones = isAdmin || (isContractor && contractorId === userId);
+  const allReleased =
+    milestones.length > 0 && milestones.every((m) => m.status === "payment_released");
+  const canCompleteProject = (isAdmin || isOwner) && project.status === "in_progress" && allReleased;
 
   return (
     <div className="space-y-6">
@@ -337,8 +350,32 @@ function ContractLoader({
               Agreed price: <span className="font-semibold">RM {Number(contract.agreed_price).toFixed(2)}</span>
             </div>
           </div>
-          <div className="text-sm text-zinc-600">
-            Total milestones: RM {totalMilestones.toFixed(2)}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="text-sm text-zinc-600">Total milestones: RM {totalMilestones.toFixed(2)}</div>
+            <button
+              type="button"
+              className="rounded-lg bg-black px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+              disabled={isSaving || !canCompleteProject}
+              onClick={async () => {
+                setIsSaving(true);
+                setError(null);
+                try {
+                  const now = new Date().toISOString();
+                  const { error: updateError } = await supabase
+                    .from("projects")
+                    .update({ status: "completed", updated_at: now, updated_by: userId })
+                    .eq("id", project.id);
+                  if (updateError) throw updateError;
+                  setProject((prev) => (prev ? { ...prev, status: "completed" } : prev));
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Failed to complete project.");
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+            >
+              Complete project
+            </button>
           </div>
         </div>
       </div>
@@ -400,6 +437,21 @@ function ContractLoader({
         onNewMessage={(m) => setMessages((prev) => [...prev, m])}
         onError={(msg) => setError(msg)}
         setSaving={setIsSaving}
+      />
+
+      <ReviewsBox
+        disabled={isSaving}
+        userId={userId}
+        projectId={project.id}
+        projectStatus={project.status}
+        ownerId={project.owner_id}
+        contractorId={bid.contractor_id}
+        existingReviews={reviews}
+        onError={(msg) => setError(msg)}
+        setSaving={setIsSaving}
+        onCreated={(reviewer_id, reviewee_id) =>
+          setReviews((prev) => [...prev, { reviewer_id, reviewee_id }])
+        }
       />
     </div>
   );
@@ -705,6 +757,131 @@ function MessagesBox({
           Send
         </button>
       </form>
+    </div>
+  );
+}
+
+function ReviewsBox({
+  disabled,
+  userId,
+  projectId,
+  projectStatus,
+  ownerId,
+  contractorId,
+  existingReviews,
+  onError,
+  setSaving,
+  onCreated,
+}: {
+  disabled: boolean;
+  userId: string;
+  projectId: string;
+  projectStatus: string;
+  ownerId: string;
+  contractorId: string;
+  existingReviews: { reviewer_id: string; reviewee_id: string }[];
+  onError: (msg: string) => void;
+  setSaving: (v: boolean) => void;
+  onCreated: (reviewer_id: string, reviewee_id: string) => void;
+}) {
+  const isCompleted = projectStatus === "completed";
+  const canReview = isCompleted && (userId === ownerId || userId === contractorId);
+
+  const targetId = userId === ownerId ? contractorId : ownerId;
+  const alreadyReviewed = existingReviews.some(
+    (r) => r.reviewer_id === userId && r.reviewee_id === targetId,
+  );
+
+  const [rating, setRating] = useState("5");
+  const [comments, setComments] = useState("");
+
+  return (
+    <div className="rounded-2xl border border-black/5 bg-white p-6">
+      <h2 className="text-sm font-semibold">Reviews</h2>
+      <p className="mt-2 text-sm text-zinc-600">
+        Reviews can be submitted after the project is completed.
+      </p>
+
+      {!canReview ? (
+        <div className="mt-4 text-sm text-zinc-700">Not available yet.</div>
+      ) : alreadyReviewed ? (
+        <div className="mt-4 text-sm text-zinc-700">You already submitted a review.</div>
+      ) : (
+        <form
+          className="mt-4 space-y-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setSaving(true);
+            try {
+              const parsedRating = Number(rating);
+              if (!Number.isInteger(parsedRating) || parsedRating < 1 || parsedRating > 5) {
+                onError("Rating must be between 1 and 5.");
+                return;
+              }
+              const { error } = await supabase.from("reviews").insert({
+                project_id: projectId,
+                reviewer_id: userId,
+                reviewee_id: targetId,
+                rating: parsedRating,
+                comments: comments.trim() ? comments.trim() : null,
+              });
+              if (error) throw error;
+              onCreated(userId, targetId);
+              setComments("");
+            } catch (err) {
+              onError(err instanceof Error ? err.message : "Failed to create review.");
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Rating</label>
+              <select
+                className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+                value={rating}
+                onChange={(e) => setRating(e.target.value)}
+                disabled={disabled}
+              >
+                <option value="5">5</option>
+                <option value="4">4</option>
+                <option value="3">3</option>
+                <option value="2">2</option>
+                <option value="1">1</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Reviewee</label>
+              <input
+                className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm disabled:bg-zinc-50"
+                value={targetId}
+                disabled
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Comments</label>
+            <textarea
+              className="min-h-24 w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              disabled={disabled}
+            />
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+              disabled={disabled}
+            >
+              Submit review
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

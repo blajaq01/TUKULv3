@@ -29,6 +29,12 @@ export default function DashboardPage() {
             Browse projects
           </Link>
           <Link
+            href="/app/notifications"
+            className="rounded-lg border border-black/10 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
+          >
+            Notifications
+          </Link>
+          <Link
             href="/app/projects/new"
             className="rounded-lg border border-black/10 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
           >
