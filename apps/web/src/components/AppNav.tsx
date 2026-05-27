@@ -20,6 +20,7 @@ export function AppNav() {
             <Link href="/app">Dashboard</Link>
             <Link href="/app/notifications">Notifications</Link>
             <Link href="/app/projects">Projects</Link>
+            <Link href="/app/contractors">Contractors</Link>
             {profile?.is_contractor ? <Link href="/app/contractor">Contractor</Link> : null}
             {profile?.is_admin ? <Link href="/app/admin/contractors">Admin</Link> : null}
           </nav>
