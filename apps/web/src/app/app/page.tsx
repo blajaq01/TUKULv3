@@ -24,6 +24,10 @@ export default function DashboardPage() {
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState<number | null>(null);
+  const [projectsCount, setProjectsCount] = useState<number | null>(null);
+  const [activeContracts, setActiveContracts] = useState<number | null>(null);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -64,40 +68,122 @@ export default function DashboardPage() {
     };
   }, [user?.id]);
 
+  useEffect(() => {
+    let isMounted = true;
+    const run = async () => {
+      if (!user?.id) return;
+      const isAdmin = Boolean(profile?.is_admin);
+      const isContractor = Boolean(profile?.is_contractor);
+
+      const { count: unreadCount, error: unreadError } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("recipient_id", user.id)
+        .eq("is_read", false);
+      if (!isMounted) return;
+      if (unreadError) throw unreadError;
+      setUnreadNotifications(typeof unreadCount === "number" ? unreadCount : 0);
+
+      const projectsQuery = supabase
+        .from("projects")
+        .select("id", { count: "exact", head: true })
+        .is("deleted_at", null);
+      if (!isAdmin && !isContractor) {
+        projectsQuery.eq("owner_id", user.id);
+      }
+      if (!isMounted) return;
+      const { count: pCount, error: pError } = await projectsQuery;
+      if (pError) throw pError;
+      setProjectsCount(typeof pCount === "number" ? pCount : 0);
+
+      const { count: cCount, error: cError } = await supabase
+        .from("contracts")
+        .select("id", { count: "exact", head: true })
+        .is("deleted_at", null);
+      if (!isMounted) return;
+      if (cError) throw cError;
+      setActiveContracts(typeof cCount === "number" ? cCount : 0);
+    };
+
+    run().catch((e) => {
+      if (!isMounted) return;
+      setMetricsError(e instanceof Error ? e.message : "Failed to load dashboard metrics.");
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [profile?.is_admin, profile?.is_contractor, user?.id]);
+
+  const roleLabel = getRoleLabel(profile);
+  const primaryAction = profile?.is_admin
+    ? { label: "Review verification", href: "/app/admin/contractors" }
+    : profile?.is_contractor
+      ? { label: "Complete contractor profile", href: "/app/contractor" }
+      : { label: "Post a project", href: "/app/projects/new" };
+
   return (
     <div className="space-y-8">
-      <div className="rounded-2xl border border-black/5 bg-white p-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-zinc-600">
-            Signed in as {user?.email} • {getRoleLabel(profile)}
-          </p>
+      <div className="rounded-3xl border border-black/5 bg-white p-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Dashboard</h1>
+            <p className="mt-2 text-sm text-zinc-600">
+              Signed in as <span className="font-medium text-zinc-800">{user?.email}</span> • {roleLabel}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={primaryAction.href}
+              className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+            >
+              {primaryAction.label}
+            </Link>
+            <Link
+              href="/app/projects"
+              className="rounded-xl border border-black/10 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
+            >
+              Projects
+            </Link>
+            <Link
+              href="/app/notifications"
+              className="rounded-xl border border-black/10 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
+            >
+              Notifications
+            </Link>
+          </div>
         </div>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link
-            href="/app/projects"
-            className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-          >
-            Browse projects
-          </Link>
-          <Link
-            href="/app/notifications"
-            className="rounded-lg border border-black/10 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
-          >
-            Notifications
-          </Link>
-          <Link
-            href="/app/projects/new"
-            className="rounded-lg border border-black/10 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
-          >
-            Post a project
-          </Link>
-          <Link
-            href="/app/templates"
-            className="rounded-lg border border-black/10 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
-          >
-            Templates
-          </Link>
+
+        {metricsError ? (
+          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {metricsError}
+          </div>
+        ) : null}
+
+        <div className="mt-6 grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl bg-zinc-50 p-5">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Unread</div>
+            <div className="mt-2 text-2xl font-semibold text-zinc-900">
+              {typeof unreadNotifications === "number" ? unreadNotifications : "—"}
+            </div>
+            <div className="mt-1 text-sm text-zinc-600">Notifications</div>
+          </div>
+          <div className="rounded-2xl bg-zinc-50 p-5">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Projects</div>
+            <div className="mt-2 text-2xl font-semibold text-zinc-900">
+              {typeof projectsCount === "number" ? projectsCount : "—"}
+            </div>
+            <div className="mt-1 text-sm text-zinc-600">
+              {profile?.is_contractor ? "Visible to you" : profile?.is_admin ? "All projects" : "Your projects"}
+            </div>
+          </div>
+          <div className="rounded-2xl bg-zinc-50 p-5">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Contracts</div>
+            <div className="mt-2 text-2xl font-semibold text-zinc-900">
+              {typeof activeContracts === "number" ? activeContracts : "—"}
+            </div>
+            <div className="mt-1 text-sm text-zinc-600">Active in system</div>
+          </div>
         </div>
       </div>
 

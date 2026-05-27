@@ -33,13 +33,16 @@ type ContractorDocRow = {
 };
 
 export default function AdminContractorsPage() {
-  const { user, profile } = useAuth();
-  const isAdmin = useMemo(() => Boolean(profile?.is_admin), [profile?.is_admin]);
+  const { user, profile, permissions } = useAuth();
+  const canManage = useMemo(
+    () => Boolean(profile?.is_admin) || permissions.includes("verification.manage"),
+    [permissions, profile?.is_admin],
+  );
 
-  if (!isAdmin) {
+  if (!canManage) {
     return (
       <div className="rounded-2xl border border-black/5 bg-white p-6 text-sm text-zinc-700">
-        This page is only available to Superadmin accounts.
+        This page is only available to authorized staff.
       </div>
     );
   }

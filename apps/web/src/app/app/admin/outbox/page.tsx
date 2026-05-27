@@ -18,9 +18,9 @@ type OutboxRow = {
 };
 
 export default function AdminOutboxPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, permissions } = useAuth();
   if (!user?.id) return null;
-  if (!profile?.is_admin) return null;
+  if (!profile?.is_admin && !permissions.includes("notifications.outbox.read")) return null;
   return <OutboxLoader />;
 }
 
@@ -99,4 +99,3 @@ function OutboxLoader() {
     </div>
   );
 }
-

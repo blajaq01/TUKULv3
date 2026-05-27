@@ -1,22 +1,37 @@
 do $$
 declare
-  v_conname text;
+  r record;
 begin
-  select c.conname into v_conname
-  from pg_constraint c
-  where c.conrelid = 'public.ledger_entries'::regclass
-    and c.contype = 'c'
-    and pg_get_constraintdef(c.oid) ilike '%type in%';
+  execute 'alter table public.ledger_entries drop constraint if exists ledger_entries_type_check';
 
-  if v_conname is not null then
-    execute format('alter table public.ledger_entries drop constraint %I', v_conname);
+  for r in
+    select c.conname
+    from pg_constraint c
+    where c.conrelid = 'public.ledger_entries'::regclass
+      and c.contype = 'c'
+      and (
+        pg_get_constraintdef(c.oid) ilike '%deposit%'
+        and pg_get_constraintdef(c.oid) ilike '%type%'
+      )
+  loop
+    execute format('alter table public.ledger_entries drop constraint if exists %I', r.conname);
+  end loop;
+
+  if not exists (
+    select 1
+    from pg_constraint c
+    where c.conrelid = 'public.ledger_entries'::regclass
+      and c.contype = 'c'
+      and c.conname = 'ledger_entries_type_check'
+  ) then
+    execute $q$
+      alter table public.ledger_entries
+      add constraint ledger_entries_type_check
+      check (type in ('deposit', 'pending_release', 'release', 'refund', 'retention_hold', 'retention_release'))
+    $q$;
   end if;
 end
 $$;
-
-alter table public.ledger_entries
-add constraint ledger_entries_type_check
-check (type in ('deposit', 'pending_release', 'release', 'refund', 'retention_hold', 'retention_release'));
 
 create table if not exists public.contract_retention_terms (
   contract_id uuid primary key references public.contracts (id) on delete cascade,
@@ -233,4 +248,3 @@ where c.deleted_at is null
 group by c.id, c.project_id;
 
 grant select on public.contract_financials_v1 to authenticated;
-

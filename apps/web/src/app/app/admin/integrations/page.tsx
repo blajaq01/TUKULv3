@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase/client";
 
 type IntegrationRow = {
   id: string;
-  integration_type: "payment_gateway" | "email_provider" | "sms_provider";
+  integration_type: "payment_gateway" | "email_provider" | "sms_provider" | "whatsapp_provider";
   provider: string;
   config: Record<string, unknown>;
   is_active: boolean;
@@ -15,9 +15,9 @@ type IntegrationRow = {
 };
 
 export default function AdminIntegrationsPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, permissions } = useAuth();
   if (!user?.id) return null;
-  if (!profile?.is_admin) return null;
+  if (!profile?.is_admin && !permissions.includes("integrations.manage")) return null;
   return <AdminIntegrationsLoader userId={user.id} />;
 }
 
@@ -46,6 +46,12 @@ function AdminIntegrationsLoader({ userId }: { userId: string }) {
   const [smsAccountSid, setSmsAccountSid] = useState("");
   const [smsAuthToken, setSmsAuthToken] = useState("");
   const [smsFrom, setSmsFrom] = useState("");
+
+  const [waPhoneNumberId, setWaPhoneNumberId] = useState("");
+  const [waBusinessAccountId, setWaBusinessAccountId] = useState("");
+  const [waAccessToken, setWaAccessToken] = useState("");
+  const [waWebhookVerifyToken, setWaWebhookVerifyToken] = useState("");
+  const [waAppSecret, setWaAppSecret] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -111,6 +117,14 @@ function AdminIntegrationsLoader({ userId }: { userId: string }) {
       setSmsAuthToken(typeof config.auth_token === "string" ? (config.auth_token as string) : "");
       setSmsFrom(typeof config.from === "string" ? (config.from as string) : "");
     }
+
+    if (nextType === "whatsapp_provider") {
+      setWaPhoneNumberId(typeof config.phone_number_id === "string" ? (config.phone_number_id as string) : "");
+      setWaBusinessAccountId(typeof config.business_account_id === "string" ? (config.business_account_id as string) : "");
+      setWaAccessToken(typeof config.access_token === "string" ? (config.access_token as string) : "");
+      setWaWebhookVerifyToken(typeof config.webhook_verify_token === "string" ? (config.webhook_verify_token as string) : "");
+      setWaAppSecret(typeof config.app_secret === "string" ? (config.app_secret as string) : "");
+    }
   }
 
   const providers = useMemo(() => {
@@ -142,6 +156,7 @@ function AdminIntegrationsLoader({ userId }: { userId: string }) {
               ["payment_gateway", "Payment gateway"],
               ["email_provider", "Email provider"],
               ["sms_provider", "SMS provider"],
+              ["whatsapp_provider", "WhatsApp"],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -322,6 +337,56 @@ function AdminIntegrationsLoader({ userId }: { userId: string }) {
           </div>
         ) : null}
 
+        {activeTab === "whatsapp_provider" ? (
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Phone number ID</label>
+              <input
+                className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+                value={waPhoneNumberId}
+                onChange={(e) => setWaPhoneNumberId(e.target.value)}
+                disabled={isSaving}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Business account ID (WABA)</label>
+              <input
+                className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+                value={waBusinessAccountId}
+                onChange={(e) => setWaBusinessAccountId(e.target.value)}
+                disabled={isSaving}
+              />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-sm font-medium">Access token</label>
+              <input
+                className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+                value={waAccessToken}
+                onChange={(e) => setWaAccessToken(e.target.value)}
+                disabled={isSaving}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Webhook verify token</label>
+              <input
+                className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+                value={waWebhookVerifyToken}
+                onChange={(e) => setWaWebhookVerifyToken(e.target.value)}
+                disabled={isSaving}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">App secret</label>
+              <input
+                className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+                value={waAppSecret}
+                onChange={(e) => setWaAppSecret(e.target.value)}
+                disabled={isSaving}
+              />
+            </div>
+          </div>
+        ) : null}
+
         <div className="mt-6 flex items-center justify-between gap-3">
           <div className="text-xs text-zinc-600">
             Stored in database table platform_integrations. Treat these values as sensitive.
@@ -359,6 +424,15 @@ function AdminIntegrationsLoader({ userId }: { userId: string }) {
                     account_sid: smsAccountSid.trim() ? smsAccountSid.trim() : null,
                     auth_token: smsAuthToken.trim() ? smsAuthToken.trim() : null,
                     from: smsFrom.trim() ? smsFrom.trim() : null,
+                  };
+                }
+                if (activeTab === "whatsapp_provider") {
+                  config = {
+                    phone_number_id: waPhoneNumberId.trim() ? waPhoneNumberId.trim() : null,
+                    business_account_id: waBusinessAccountId.trim() ? waBusinessAccountId.trim() : null,
+                    access_token: waAccessToken.trim() ? waAccessToken.trim() : null,
+                    webhook_verify_token: waWebhookVerifyToken.trim() ? waWebhookVerifyToken.trim() : null,
+                    app_secret: waAppSecret.trim() ? waAppSecret.trim() : null,
                   };
                 }
 

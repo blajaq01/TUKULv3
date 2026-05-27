@@ -25,6 +25,7 @@ type AuthContextValue = {
   session: Session | null;
   user: User | null;
   profile: UserProfile | null;
+  permissions: string[];
   signOut: () => Promise<void>;
 };
 
@@ -34,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -64,6 +66,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const userId = session?.user?.id;
     if (!userId) {
+      Promise.resolve().then(() => {
+        if (!isMounted) return;
+        setPermissions([]);
+      });
       return () => {
         isMounted = false;
       };
@@ -78,9 +84,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!isMounted) return;
         if (error) {
           setProfile(null);
+          setPermissions([]);
           return;
         }
         setProfile(data as UserProfile);
+      });
+
+    supabase
+      .from("user_role_assignments")
+      .select("role_id")
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .then(async ({ data, error }) => {
+        if (!isMounted) return;
+        if (error) {
+          setPermissions([]);
+          return;
+        }
+        const roleIds = (data ?? []).map((r) => (r as { role_id: string }).role_id);
+        if (roleIds.length === 0) {
+          setPermissions([]);
+          return;
+        }
+        const { data: perms, error: permsError } = await supabase
+          .from("role_permissions")
+          .select("permission_code")
+          .in("role_id", roleIds);
+        if (!isMounted) return;
+        if (permsError) {
+          setPermissions([]);
+          return;
+        }
+        const codes = Array.from(
+          new Set((perms ?? []).map((p) => (p as { permission_code: string }).permission_code).filter(Boolean)),
+        );
+        setPermissions(codes);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setPermissions([]);
       });
 
     return () => {
@@ -94,11 +136,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       user: session?.user ?? null,
       profile: session ? profile : null,
+      permissions,
       signOut: async () => {
         await supabase.auth.signOut();
       },
     }),
-    [isLoading, profile, session],
+    [isLoading, permissions, profile, session],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
