@@ -199,6 +199,27 @@ export function AppNav() {
         ),
         isVisible: () => isAdmin,
       },
+      {
+        label: "Landing",
+        href: "/app/admin/landing",
+        icon: (
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+            <path
+              d="M4 6h16v12H4V6Z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M8 10h8M8 13h6"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          </svg>
+        ),
+        isVisible: ({ permissions: p }) => isAdmin || p.includes("landing.manage"),
+      },
     ],
     [isAdmin],
   );

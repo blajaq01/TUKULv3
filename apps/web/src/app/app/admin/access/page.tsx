@@ -39,6 +39,29 @@ function AdminAccessLoader({ adminId }: { adminId: string }) {
 
   const roleOptions = useMemo(() => roles.sort((a, b) => a.name.localeCompare(b.name)), [roles]);
 
+  const normalizeAssignment = (row: unknown): AssignmentRow => {
+    const r = row as {
+      id: string;
+      user_id: string;
+      role_id: string;
+      created_at: string;
+      users?: { email: string; full_name: string } | { email: string; full_name: string }[] | null;
+      access_roles?: { code: string; name: string } | { code: string; name: string }[] | null;
+    };
+
+    const users = Array.isArray(r.users) ? r.users[0] ?? null : r.users ?? null;
+    const access_roles = Array.isArray(r.access_roles) ? r.access_roles[0] ?? null : r.access_roles ?? null;
+
+    return {
+      id: r.id,
+      user_id: r.user_id,
+      role_id: r.role_id,
+      created_at: r.created_at,
+      users,
+      access_roles,
+    };
+  };
+
   useEffect(() => {
     let isMounted = true;
     const run = async () => {
@@ -62,7 +85,7 @@ function AdminAccessLoader({ adminId }: { adminId: string }) {
         .limit(200);
       if (!isMounted) return;
       if (assignmentError) throw assignmentError;
-      setAssignments((assignmentData ?? []) as AssignmentRow[]);
+      setAssignments((assignmentData ?? []).map(normalizeAssignment));
     };
 
     run()
@@ -124,7 +147,7 @@ function AdminAccessLoader({ adminId }: { adminId: string }) {
                 .select("id,user_id,role_id,created_at,users(email,full_name),access_roles(code,name)")
                 .single();
               if (insertError) throw insertError;
-              setAssignments((prev) => [inserted as AssignmentRow, ...prev]);
+              setAssignments((prev) => [normalizeAssignment(inserted), ...prev]);
               setEmail("");
             } catch (err) {
               setError(err instanceof Error ? err.message : "Failed to assign role.");
@@ -217,4 +240,3 @@ function AdminAccessLoader({ adminId }: { adminId: string }) {
     </div>
   );
 }
-
