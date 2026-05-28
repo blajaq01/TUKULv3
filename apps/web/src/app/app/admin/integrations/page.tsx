@@ -7,7 +7,12 @@ import { supabase } from "@/lib/supabase/client";
 
 type IntegrationRow = {
   id: string;
-  integration_type: "payment_gateway" | "email_provider" | "sms_provider" | "whatsapp_provider";
+  integration_type:
+    | "payment_gateway"
+    | "email_provider"
+    | "sms_provider"
+    | "whatsapp_provider"
+    | "supabase";
   provider: string;
   config: Record<string, unknown>;
   is_active: boolean;
@@ -18,14 +23,15 @@ export default function AdminIntegrationsPage() {
   const { user, profile, permissions } = useAuth();
   if (!user?.id) return null;
   if (!profile?.is_admin && !permissions.includes("integrations.manage")) return null;
-  return <AdminIntegrationsLoader userId={user.id} />;
+  return <AdminIntegrationsLoader userId={user.id} isAdmin={Boolean(profile?.is_admin)} />;
 }
 
-function AdminIntegrationsLoader({ userId }: { userId: string }) {
+function AdminIntegrationsLoader({ userId, isAdmin }: { userId: string; isAdmin: boolean }) {
   const [rows, setRows] = useState<IntegrationRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<IntegrationRow["integration_type"]>("payment_gateway");
   const [provider, setProvider] = useState("placeholder");
@@ -52,6 +58,11 @@ function AdminIntegrationsLoader({ userId }: { userId: string }) {
   const [waAccessToken, setWaAccessToken] = useState("");
   const [waWebhookVerifyToken, setWaWebhookVerifyToken] = useState("");
   const [waAppSecret, setWaAppSecret] = useState("");
+
+  const [supabaseProjectId, setSupabaseProjectId] = useState("");
+  const [supabaseUrl, setSupabaseUrl] = useState("");
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState("");
+  const [supabaseServiceRoleKey, setSupabaseServiceRoleKey] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -89,6 +100,7 @@ function AdminIntegrationsLoader({ userId }: { userId: string }) {
     setActiveTab(nextType);
     setProvider(nextProvider);
     setIsActive(Boolean(row?.is_active));
+    setNotice(null);
 
     if (nextType === "payment_gateway") {
       setPaymentPublicKey(typeof config.public_key === "string" ? (config.public_key as string) : "");
@@ -125,6 +137,15 @@ function AdminIntegrationsLoader({ userId }: { userId: string }) {
       setWaWebhookVerifyToken(typeof config.webhook_verify_token === "string" ? (config.webhook_verify_token as string) : "");
       setWaAppSecret(typeof config.app_secret === "string" ? (config.app_secret as string) : "");
     }
+
+    if (nextType === "supabase") {
+      setSupabaseProjectId(typeof config.project_id === "string" ? (config.project_id as string) : "");
+      setSupabaseUrl(typeof config.url === "string" ? (config.url as string) : "");
+      setSupabaseAnonKey(typeof config.anon_key === "string" ? (config.anon_key as string) : "");
+      setSupabaseServiceRoleKey(
+        typeof config.service_role_key === "string" ? (config.service_role_key as string) : "",
+      );
+    }
   }
 
   const providers = useMemo(() => {
@@ -149,6 +170,12 @@ function AdminIntegrationsLoader({ userId }: { userId: string }) {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       ) : null}
 
+      {notice ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          {notice}
+        </div>
+      ) : null}
+
       <div className="rounded-2xl border border-black/5 bg-white p-6">
         <div className="flex flex-wrap gap-2">
           {(
@@ -157,6 +184,7 @@ function AdminIntegrationsLoader({ userId }: { userId: string }) {
               ["email_provider", "Email provider"],
               ["sms_provider", "SMS provider"],
               ["whatsapp_provider", "WhatsApp"],
+              ...(isAdmin ? ([["supabase", "Supabase"]] as const) : []),
             ] as const
           ).map(([key, label]) => (
             <button
@@ -168,7 +196,9 @@ function AdminIntegrationsLoader({ userId }: { userId: string }) {
               disabled={isSaving}
               onClick={() => {
                 const firstProvider =
-                  rows.find((r) => r.integration_type === key)?.provider ?? provider;
+                  key === "supabase"
+                    ? "supabase"
+                    : rows.find((r) => r.integration_type === key)?.provider ?? provider;
                 applySelection(key, firstProvider);
               }}
             >
@@ -387,82 +417,181 @@ function AdminIntegrationsLoader({ userId }: { userId: string }) {
           </div>
         ) : null}
 
+        {activeTab === "supabase" ? (
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-sm font-medium">Project ID (reference)</label>
+              <input
+                className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+                value={supabaseProjectId}
+                onChange={(e) => setSupabaseProjectId(e.target.value)}
+                disabled={isSaving}
+              />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-sm font-medium">Supabase URL</label>
+              <input
+                className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+                value={supabaseUrl}
+                onChange={(e) => setSupabaseUrl(e.target.value)}
+                disabled={isSaving}
+                placeholder="https://xxxx.supabase.co"
+              />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-sm font-medium">Anon (publishable) key</label>
+              <textarea
+                className="min-h-[96px] w-full resize-y rounded-lg border border-black/10 px-3 py-2 text-sm leading-6 outline-none focus:border-black/30 disabled:bg-zinc-50"
+                value={supabaseAnonKey}
+                onChange={(e) => setSupabaseAnonKey(e.target.value)}
+                disabled={isSaving}
+              />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-sm font-medium">Service role key</label>
+              <textarea
+                className="min-h-[96px] w-full resize-y rounded-lg border border-black/10 px-3 py-2 text-sm leading-6 outline-none focus:border-black/30 disabled:bg-zinc-50"
+                value={supabaseServiceRoleKey}
+                onChange={(e) => setSupabaseServiceRoleKey(e.target.value)}
+                disabled={isSaving}
+              />
+            </div>
+          </div>
+        ) : null}
+
         <div className="mt-6 flex items-center justify-between gap-3">
           <div className="text-xs text-zinc-600">
             Stored in database table platform_integrations. Treat these values as sensitive.
           </div>
-          <button
-            type="button"
-            className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
-            disabled={isLoading || isSaving}
-            onClick={async () => {
-              setIsSaving(true);
-              setError(null);
-              try {
-                const now = new Date().toISOString();
-                let config: Record<string, unknown> = {};
-                if (activeTab === "payment_gateway") {
-                  config = {
-                    public_key: paymentPublicKey.trim() ? paymentPublicKey.trim() : null,
-                    secret_key: paymentSecretKey.trim() ? paymentSecretKey.trim() : null,
-                    webhook_secret: paymentWebhookSecret.trim() ? paymentWebhookSecret.trim() : null,
-                    merchant_id: paymentMerchantId.trim() ? paymentMerchantId.trim() : null,
-                    sandbox_mode: paymentSandboxMode,
-                  };
-                }
-                if (activeTab === "email_provider") {
-                  config = {
-                    smtp_host: smtpHost.trim() ? smtpHost.trim() : null,
-                    smtp_port: smtpPort.trim() ? Number(smtpPort) : null,
-                    smtp_user: smtpUser.trim() ? smtpUser.trim() : null,
-                    smtp_pass: smtpPass.trim() ? smtpPass.trim() : null,
-                    from_email: fromEmail.trim() ? fromEmail.trim() : null,
-                  };
-                }
-                if (activeTab === "sms_provider") {
-                  config = {
-                    account_sid: smsAccountSid.trim() ? smsAccountSid.trim() : null,
-                    auth_token: smsAuthToken.trim() ? smsAuthToken.trim() : null,
-                    from: smsFrom.trim() ? smsFrom.trim() : null,
-                  };
-                }
-                if (activeTab === "whatsapp_provider") {
-                  config = {
-                    phone_number_id: waPhoneNumberId.trim() ? waPhoneNumberId.trim() : null,
-                    business_account_id: waBusinessAccountId.trim() ? waBusinessAccountId.trim() : null,
-                    access_token: waAccessToken.trim() ? waAccessToken.trim() : null,
-                    webhook_verify_token: waWebhookVerifyToken.trim() ? waWebhookVerifyToken.trim() : null,
-                    app_secret: waAppSecret.trim() ? waAppSecret.trim() : null,
-                  };
-                }
+          <div className="flex items-center gap-3">
+            {activeTab === "supabase" ? (
+              <button
+                type="button"
+                className="rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium hover:bg-zinc-50 disabled:opacity-60"
+                disabled={isLoading || isSaving || !isAdmin}
+                onClick={async () => {
+                  setError(null);
+                  setNotice(null);
+                  setIsSaving(true);
+                  try {
+                    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+                    if (sessionError) throw sessionError;
+                    const token = sessionData.session?.access_token ?? "";
+                    if (!token) throw new Error("Not signed in.");
+                    const res = await fetch("/api/admin/env/supabase", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({
+                        supabaseUrl: supabaseUrl.trim(),
+                        supabaseAnonKey: supabaseAnonKey.trim(),
+                        supabaseServiceRoleKey: supabaseServiceRoleKey.trim(),
+                        supabaseProjectId: supabaseProjectId.trim(),
+                      }),
+                    });
+                    const json = (await res.json()) as { ok?: boolean; error?: string };
+                    if (!res.ok) throw new Error(json.error || "Failed to write .env.local.");
+                    setNotice("Saved to apps/web/.env.local. Restart the dev server to apply.");
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Failed to write env.");
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }}
+              >
+                Write to .env.local
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+              disabled={isLoading || isSaving}
+              onClick={async () => {
+                setIsSaving(true);
+                setError(null);
+                setNotice(null);
+                try {
+                  const now = new Date().toISOString();
+                  let config: Record<string, unknown> = {};
+                  if (activeTab === "payment_gateway") {
+                    config = {
+                      public_key: paymentPublicKey.trim() ? paymentPublicKey.trim() : null,
+                      secret_key: paymentSecretKey.trim() ? paymentSecretKey.trim() : null,
+                      webhook_secret: paymentWebhookSecret.trim() ? paymentWebhookSecret.trim() : null,
+                      merchant_id: paymentMerchantId.trim() ? paymentMerchantId.trim() : null,
+                      sandbox_mode: paymentSandboxMode,
+                    };
+                  }
+                  if (activeTab === "email_provider") {
+                    config = {
+                      smtp_host: smtpHost.trim() ? smtpHost.trim() : null,
+                      smtp_port: smtpPort.trim() ? Number(smtpPort) : null,
+                      smtp_user: smtpUser.trim() ? smtpUser.trim() : null,
+                      smtp_pass: smtpPass.trim() ? smtpPass.trim() : null,
+                      from_email: fromEmail.trim() ? fromEmail.trim() : null,
+                    };
+                  }
+                  if (activeTab === "sms_provider") {
+                    config = {
+                      account_sid: smsAccountSid.trim() ? smsAccountSid.trim() : null,
+                      auth_token: smsAuthToken.trim() ? smsAuthToken.trim() : null,
+                      from: smsFrom.trim() ? smsFrom.trim() : null,
+                    };
+                  }
+                  if (activeTab === "whatsapp_provider") {
+                    config = {
+                      phone_number_id: waPhoneNumberId.trim() ? waPhoneNumberId.trim() : null,
+                      business_account_id: waBusinessAccountId.trim() ? waBusinessAccountId.trim() : null,
+                      access_token: waAccessToken.trim() ? waAccessToken.trim() : null,
+                      webhook_verify_token: waWebhookVerifyToken.trim() ? waWebhookVerifyToken.trim() : null,
+                      app_secret: waAppSecret.trim() ? waAppSecret.trim() : null,
+                    };
+                  }
+                  if (activeTab === "supabase") {
+                    config = {
+                      project_id: supabaseProjectId.trim() ? supabaseProjectId.trim() : null,
+                      url: supabaseUrl.trim() ? supabaseUrl.trim() : null,
+                      anon_key: supabaseAnonKey.trim() ? supabaseAnonKey.trim() : null,
+                      service_role_key: supabaseServiceRoleKey.trim()
+                        ? supabaseServiceRoleKey.trim()
+                        : null,
+                    };
+                  }
 
-                const { data, error: upsertError } = await supabase
-                  .from("platform_integrations")
-                  .upsert({
-                    integration_type: activeTab,
-                    provider,
-                    config,
-                    is_active: isActive,
-                    updated_at: now,
-                    updated_by: userId,
-                  })
-                  .select("id,integration_type,provider,config,is_active,updated_at")
-                  .single();
-                if (upsertError) throw upsertError;
-                const saved = data as IntegrationRow;
-                setRows((prev) => {
-                  const next = prev.filter((r) => !(r.integration_type === saved.integration_type && r.provider === saved.provider));
-                  return [saved, ...next];
-                });
-              } catch (err) {
-                setError(err instanceof Error ? err.message : "Failed to save integration.");
-              } finally {
-                setIsSaving(false);
-              }
-            }}
-          >
-            Save
-          </button>
+                  const { data, error: upsertError } = await supabase
+                    .from("platform_integrations")
+                    .upsert({
+                      integration_type: activeTab,
+                      provider,
+                      config,
+                      is_active: isActive,
+                      updated_at: now,
+                      updated_by: userId,
+                    })
+                    .select("id,integration_type,provider,config,is_active,updated_at")
+                    .single();
+                  if (upsertError) throw upsertError;
+                  const saved = data as IntegrationRow;
+                  setRows((prev) => {
+                    const next = prev.filter(
+                      (r) =>
+                        !(r.integration_type === saved.integration_type && r.provider === saved.provider),
+                    );
+                    return [saved, ...next];
+                  });
+                  setNotice("Saved.");
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Failed to save integration.");
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+            >
+              Save
+            </button>
+          </div>
         </div>
       </div>
     </div>

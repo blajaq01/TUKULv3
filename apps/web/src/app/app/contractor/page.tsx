@@ -22,6 +22,12 @@ type ContractorProfileRow = {
 
 type DocType = "cidb" | "ssm" | "insurance" | "portfolio" | "other";
 
+type Locations = {
+  states: string[];
+  districtsByState: Record<string, string[]>;
+  areasByStateDistrict: Record<string, Record<string, string[]>>;
+};
+
 function toDateInputValue(value: string | null) {
   if (!value) return "";
   return value.slice(0, 10);
@@ -59,6 +65,12 @@ function ContractorLoader({ contractorId }: { contractorId: string }) {
   const [insuranceExpiry, setInsuranceExpiry] = useState("");
   const [bio, setBio] = useState("");
 
+  const [locations, setLocations] = useState<Locations | null>(null);
+  const [selectedState, setSelectedState] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [selectedArea, setSelectedArea] = useState("");
+  const [serviceAreas, setServiceAreas] = useState<string[]>([]);
+
   const [verificationStatus, setVerificationStatus] = useState<
     ContractorProfileRow["verification_status"] | null
   >(null);
@@ -69,6 +81,17 @@ function ContractorLoader({ contractorId }: { contractorId: string }) {
 
     (async () => {
       try {
+        fetch("/api/locations")
+          .then((r) => r.json() as Promise<Locations>)
+          .then((data) => {
+            if (!isMounted) return;
+            setLocations(data);
+          })
+          .catch(() => {
+            if (!isMounted) return;
+            setLocations(null);
+          });
+
         const { data, error: selectError } = await supabase
           .from("contractor_profiles")
           .select(
@@ -98,6 +121,17 @@ function ContractorLoader({ contractorId }: { contractorId: string }) {
         setBio(row.bio ?? "");
         setVerificationStatus(row.verification_status);
         setVerificationNotes(row.verification_notes);
+
+        const { data: userRow } = await supabase
+          .from("users")
+          .select("state,district,service_areas")
+          .eq("id", contractorId)
+          .maybeSingle();
+        if (!isMounted) return;
+        const u = userRow as { state: string | null; district: string | null; service_areas: string[] | null } | null;
+        setSelectedState(u?.state ?? "");
+        setSelectedDistrict(u?.district ?? "");
+        setServiceAreas(Array.isArray(u?.service_areas) ? u?.service_areas ?? [] : []);
       } catch (e) {
         if (!isMounted) return;
         setError(e instanceof Error ? e.message : "Failed to load contractor profile.");
@@ -147,6 +181,16 @@ function ContractorLoader({ contractorId }: { contractorId: string }) {
       if (upsertError) throw upsertError;
       setVerificationStatus((data as ContractorProfileRow).verification_status);
       setVerificationNotes((data as ContractorProfileRow).verification_notes);
+
+      const { error: userUpdateError } = await supabase
+        .from("users")
+        .update({
+          state: selectedState.trim() ? selectedState.trim() : null,
+          district: selectedDistrict.trim() ? selectedDistrict.trim() : null,
+          service_areas: serviceAreas.slice(0, 10),
+        })
+        .eq("id", contractorId);
+      if (userUpdateError) throw userUpdateError;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save profile.");
     } finally {
@@ -329,6 +373,119 @@ function ContractorLoader({ contractorId }: { contractorId: string }) {
             disabled={!canEdit}
           />
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-black/5 bg-white p-6">
+        <h2 className="text-sm font-semibold">Service location</h2>
+        <p className="mt-2 text-sm text-zinc-600">
+          Choose your base district and up to 10 operational areas.
+        </p>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">State</label>
+            <select
+              className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+              value={selectedState}
+              onChange={(e) => {
+                setSelectedState(e.target.value);
+                setSelectedDistrict("");
+                setSelectedArea("");
+                setServiceAreas([]);
+              }}
+              disabled={!canEdit || !locations}
+            >
+              <option value="">Select state</option>
+              {(locations?.states ?? []).map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">District</label>
+            <select
+              className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+              value={selectedDistrict}
+              onChange={(e) => {
+                setSelectedDistrict(e.target.value);
+                setSelectedArea("");
+                setServiceAreas([]);
+              }}
+              disabled={!canEdit || !locations || !selectedState}
+            >
+              <option value="">Select district</option>
+              {(selectedState ? locations?.districtsByState[selectedState] ?? [] : []).map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5 md:col-span-2">
+            <label className="text-sm font-medium">Add an area</label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <select
+                className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+                value={selectedArea}
+                onChange={(e) => setSelectedArea(e.target.value)}
+                disabled={!canEdit || !locations || !selectedState || !selectedDistrict}
+              >
+                <option value="">Select area</option>
+                {(selectedState && selectedDistrict
+                  ? locations?.areasByStateDistrict[selectedState]?.[selectedDistrict] ?? []
+                  : []
+                ).map((a) => (
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="rounded-lg border border-black/10 bg-white px-4 py-2 text-sm hover:bg-zinc-50 disabled:opacity-60"
+                disabled={
+                  !canEdit ||
+                  !selectedArea ||
+                  serviceAreas.includes(selectedArea) ||
+                  serviceAreas.length >= 10
+                }
+                onClick={() => {
+                  if (!selectedArea) return;
+                  setServiceAreas((prev) => {
+                    if (prev.includes(selectedArea)) return prev;
+                    if (prev.length >= 10) return prev;
+                    return [...prev, selectedArea];
+                  });
+                  setSelectedArea("");
+                }}
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {serviceAreas.length ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {serviceAreas.map((a) => (
+              <button
+                key={a}
+                type="button"
+                className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-sm hover:bg-zinc-50"
+                onClick={() => setServiceAreas((prev) => prev.filter((x) => x !== a))}
+                disabled={!canEdit}
+              >
+                {a}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4 text-sm text-zinc-600">No areas selected yet.</div>
+        )}
       </div>
 
       <div className="rounded-2xl border border-black/5 bg-white p-6">

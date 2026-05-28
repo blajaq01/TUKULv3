@@ -88,7 +88,7 @@ export function LandingNav() {
         <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-3">
             <Image
-              src="/brand/tukul-written.jpg"
+              src="/brand/tukul-written-transparent.png"
               alt="Tukul.com"
               width={140}
               height={32}

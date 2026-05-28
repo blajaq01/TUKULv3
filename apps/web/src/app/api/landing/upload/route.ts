@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 import { createSupabaseAnonServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
+import { requireSupabaseEnv } from "@/lib/env";
 
 export const runtime = "nodejs";
 
@@ -46,7 +48,27 @@ export async function POST(req: Request) {
     if (!can) return badRequest("Not allowed.", 403);
   }
 
-  const service = createSupabaseServiceClient();
+  let service: ReturnType<typeof createSupabaseServiceClient> | null = null;
+  try {
+    service = createSupabaseServiceClient();
+  } catch {
+    const { data } = await anon
+      .from("platform_integrations")
+      .select("config,is_active")
+      .eq("integration_type", "supabase")
+      .eq("provider", "supabase")
+      .is("deleted_at", null)
+      .maybeSingle();
+    const cfg = (data?.config ?? {}) as Record<string, unknown>;
+    const key = typeof cfg.service_role_key === "string" ? cfg.service_role_key.trim() : "";
+    const active = Boolean(data?.is_active);
+    if (!active || !key) return badRequest("Missing SUPABASE_SERVICE_ROLE_KEY.", 500);
+    const { supabaseUrl } = requireSupabaseEnv();
+    service = createClient(supabaseUrl, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    }) as ReturnType<typeof createSupabaseServiceClient>;
+  }
+  if (!service) return badRequest("Failed to initialize storage client.", 500);
 
   const { data: buckets, error: bucketsError } = await service.storage.listBuckets();
   if (bucketsError) return badRequest("Failed to list storage buckets.", 500);

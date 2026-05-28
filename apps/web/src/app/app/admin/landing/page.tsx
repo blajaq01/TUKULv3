@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/lib/supabase/client";
@@ -66,6 +66,45 @@ function isLandingContent(value: unknown): value is LandingContent {
   if (!value || typeof value !== "object") return false;
   const v = value as Partial<LandingContent>;
   return Boolean(v.hero && v.trust && v.sections);
+}
+
+function UploadPicker({
+  accept,
+  disabled,
+  label,
+  onPick,
+}: {
+  accept: string;
+  disabled: boolean;
+  label: string;
+  onPick: (file: File) => void | Promise<void>;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        className="hidden"
+        disabled={disabled}
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          await onPick(file);
+          e.target.value = "";
+        }}
+      />
+      <button
+        type="button"
+        className="rounded-lg border border-black/10 bg-white px-3 py-2 text-sm hover:bg-zinc-50 disabled:opacity-60"
+        disabled={disabled}
+        onClick={() => inputRef.current?.click()}
+      >
+        {label}
+      </button>
+    </>
+  );
 }
 
 async function uploadLandingAsset(args: {
@@ -324,26 +363,26 @@ export default function AdminLandingPage() {
             <div className="mt-2 text-sm text-zinc-600">
               Upload a calm architectural background. It will be blurred and softened behind the hero.
             </div>
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <input
-                type="file"
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <UploadPicker
                 accept="image/png,image/jpeg,image/webp"
                 disabled={isLoading || isSaving}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
+                label="Upload"
+                onPick={async (file) => {
                   setError(null);
                   setNotice(null);
                   setIsSaving(true);
                   try {
-                    const { publicUrl } = await uploadLandingAsset({ file, path: "hero/background" });
+                    const { publicUrl } = await uploadLandingAsset({
+                      file,
+                      path: "hero/background",
+                    });
                     setContent((c) => ({ ...c, hero: { ...c.hero, backgroundUrl: publicUrl } }));
                     setNotice("Background uploaded. Save changes to publish.");
                   } catch (err) {
                     setError(err instanceof Error ? err.message : "Upload failed.");
                   } finally {
                     setIsSaving(false);
-                    e.target.value = "";
                   }
                 }}
               />
@@ -374,26 +413,26 @@ export default function AdminLandingPage() {
             <div className="mt-2 text-sm text-zinc-600">
               Upload a wide product-workflow mockup image with floating cards.
             </div>
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <input
-                type="file"
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <UploadPicker
                 accept="image/png,image/jpeg,image/webp"
                 disabled={isLoading || isSaving}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
+                label="Upload"
+                onPick={async (file) => {
                   setError(null);
                   setNotice(null);
                   setIsSaving(true);
                   try {
-                    const { publicUrl } = await uploadLandingAsset({ file, path: "hero/mockup" });
+                    const { publicUrl } = await uploadLandingAsset({
+                      file,
+                      path: "hero/mockup",
+                    });
                     setContent((c) => ({ ...c, hero: { ...c.hero, mockupUrl: publicUrl } }));
                     setNotice("Mockup uploaded. Save changes to publish.");
                   } catch (err) {
                     setError(err instanceof Error ? err.message : "Upload failed.");
                   } finally {
                     setIsSaving(false);
-                    e.target.value = "";
                   }
                 }}
               />
@@ -424,26 +463,26 @@ export default function AdminLandingPage() {
             <div className="mt-2 text-sm text-zinc-600">
               Upload an MP4 (recommended 8–12s, loopable, 16:9).
             </div>
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <input
-                type="file"
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <UploadPicker
                 accept="video/mp4,video/webm"
                 disabled={isLoading || isSaving}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
+                label="Upload"
+                onPick={async (file) => {
                   setError(null);
                   setNotice(null);
                   setIsSaving(true);
                   try {
-                    const { publicUrl } = await uploadLandingAsset({ file, path: "hero/video" });
+                    const { publicUrl } = await uploadLandingAsset({
+                      file,
+                      path: "hero/video",
+                    });
                     setContent((c) => ({ ...c, hero: { ...c.hero, videoUrl: publicUrl } }));
                     setNotice("Video uploaded. Save changes to publish.");
                   } catch (err) {
                     setError(err instanceof Error ? err.message : "Upload failed.");
                   } finally {
                     setIsSaving(false);
-                    e.target.value = "";
                   }
                 }}
               />
@@ -474,14 +513,12 @@ export default function AdminLandingPage() {
             <div className="mt-2 text-sm text-zinc-600">
               Optional poster image for faster initial load.
             </div>
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <input
-                type="file"
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <UploadPicker
                 accept="image/png,image/jpeg,image/webp"
                 disabled={isLoading || isSaving}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
+                label="Upload"
+                onPick={async (file) => {
                   setError(null);
                   setNotice(null);
                   setIsSaving(true);
@@ -496,7 +533,6 @@ export default function AdminLandingPage() {
                     setError(err instanceof Error ? err.message : "Upload failed.");
                   } finally {
                     setIsSaving(false);
-                    e.target.value = "";
                   }
                 }}
               />
@@ -581,34 +617,32 @@ export default function AdminLandingPage() {
             <div key={i.key} className="rounded-xl border border-black/5 bg-zinc-50 p-4">
               <div className="text-sm font-semibold">{i.label}</div>
               <div className="mt-3 flex flex-col gap-3">
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  disabled={isLoading || isSaving}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setError(null);
-                    setNotice(null);
-                    setIsSaving(true);
-                    try {
-                      const { publicUrl } = await uploadLandingAsset({
-                        file,
-                        path: `sections/${i.key}`,
-                      });
-                      setContent((c) => ({
-                        ...c,
-                        sections: { ...c.sections, [i.key]: publicUrl },
-                      }));
-                      setNotice("Image uploaded. Save changes to publish.");
-                    } catch (err) {
-                      setError(err instanceof Error ? err.message : "Upload failed.");
-                    } finally {
-                      setIsSaving(false);
-                      e.target.value = "";
-                    }
-                  }}
-                />
+                <div className="flex flex-wrap items-center gap-3">
+                  <UploadPicker
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={isLoading || isSaving}
+                    label="Upload"
+                    onPick={async (file) => {
+                      setError(null);
+                      setNotice(null);
+                      setIsSaving(true);
+                      try {
+                        const { publicUrl } = await uploadLandingAsset({
+                          file,
+                          path: `sections/${i.key}`,
+                        });
+                        setContent((c) => ({
+                          ...c,
+                          sections: { ...c.sections, [i.key]: publicUrl },
+                        }));
+                        setNotice("Image uploaded. Save changes to publish.");
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : "Upload failed.");
+                      } finally {
+                        setIsSaving(false);
+                      }
+                    }}
+                  />
                 <button
                   type="button"
                   className="rounded-lg border border-black/10 bg-white px-3 py-2 text-sm hover:bg-zinc-50 disabled:opacity-60"
@@ -620,6 +654,7 @@ export default function AdminLandingPage() {
                 >
                   Copy AI prompt
                 </button>
+                </div>
               </div>
               {content.sections[i.key as keyof LandingContent["sections"]] ? (
                 <img

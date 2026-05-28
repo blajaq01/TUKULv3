@@ -441,8 +441,11 @@ export function AppNav() {
               }`}
               title={isCollapsed ? "Sign out" : undefined}
               onClick={async () => {
-                await signOut();
                 router.replace("/");
+                try {
+                  window.localStorage.setItem("tukul.signed_out", "1");
+                } catch {}
+                await signOut();
               }}
             >
               <span className={`${isCollapsed ? "hidden" : ""}`}>Sign out</span>

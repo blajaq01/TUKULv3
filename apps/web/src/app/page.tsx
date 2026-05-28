@@ -246,7 +246,7 @@ export default async function Home() {
 function LandingHero({ content }: { content: LandingContent }) {
   const hero = content.hero ?? {};
 
-  const headline = hero.headline ?? "Better projects.\n{Built together}.";
+  const headline = hero.headline ?? "Construction projects,\nfinally simplified.";
   const subheadline =
     hero.subheadline ??
     "A modern marketplace built for property owners and contractors—verified profiles, transparent bidding, and milestone approvals with escrow-style releases.";
@@ -326,78 +326,34 @@ function LandingHeroMedia({ content }: { content: LandingContent }) {
           <img
             src={backgroundUrl}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover opacity-70 blur-[1px]"
+            className="absolute inset-0 h-full w-full object-cover opacity-55 blur-[2px]"
             loading="lazy"
           />
         ) : null}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,color-mix(in_oklab,var(--tukul-accent),transparent_86%),transparent_58%),linear-gradient(to_bottom,rgba(247,247,245,0.85),rgba(247,247,245,0.35),rgba(247,247,245,0.65))]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,color-mix(in_oklab,var(--tukul-accent),transparent_86%),transparent_58%),linear-gradient(to_bottom,rgba(247,247,245,0.92),rgba(247,247,245,0.46),rgba(247,247,245,0.78))]" />
 
         <div className="absolute inset-0 p-5 sm:p-7">
-          <div className="relative h-full w-full">
-            <div className="absolute left-0 top-0 w-[78%] rounded-[28px] border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_8%)] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.10)] sm:p-5">
-              {videoUrl ? (
-                <video
-                  className="aspect-[16/10] w-full rounded-2xl border border-[var(--tukul-border)] bg-black object-cover"
-                  src={videoUrl}
-                  poster={posterUrl || undefined}
-                  muted
-                  loop
-                  playsInline
-                  autoPlay
-                />
-              ) : mockupUrl ? (
-                <img
-                  src={mockupUrl}
-                  alt="Tukul workflow preview"
-                  className="h-auto w-full rounded-2xl border border-[var(--tukul-border)] bg-white object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="flex aspect-[16/10] w-full items-center justify-center rounded-2xl border border-[var(--tukul-border)] bg-[var(--tukul-surface-2)] px-5 text-center text-sm leading-6 text-[var(--tukul-muted)]">
-                  Upload a hero workflow mockup (or video) in Admin → Landing.
-                </div>
-              )}
-            </div>
-
-            <div className="absolute right-0 top-5 w-[44%] rounded-[24px] border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_6%)] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.12)] sm:top-7">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-[var(--foreground)]">Bids received</div>
-                <div className="rounded-full bg-[color:color-mix(in_oklab,var(--tukul-accent),transparent_86%)] px-2 py-0.5 text-[10px] font-semibold text-[color:color-mix(in_oklab,var(--tukul-accent),black_20%)]">
-                  Recommended
-                </div>
-              </div>
-              <div className="mt-3 grid gap-2">
-                {[
-                  { n: "Greenline Construction", p: "RM 28,450" },
-                  { n: "Summit Build", p: "RM 31,200" },
-                  { n: "Elevate Builders", p: "RM 29,900" },
-                ].map((r) => (
-                  <div
-                    key={r.n}
-                    className="flex items-center justify-between rounded-2xl border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_12%)] px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate text-xs font-semibold text-[var(--foreground)]">
-                        {r.n}
-                      </div>
-                      <div className="mt-0.5 text-[11px] text-[var(--tukul-muted)]">4.8 ★</div>
-                    </div>
-                    <div className="text-xs font-semibold text-[var(--foreground)]">{r.p}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="absolute right-0 bottom-0 w-[46%] rounded-[24px] border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_6%)] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.12)]">
-              <div className="text-xs font-semibold text-[var(--foreground)]">Escrow balance</div>
-              <div className="mt-1 text-2xl font-semibold tracking-tight">RM 22,825</div>
-              <div className="mt-1 text-[11px] leading-5 text-[var(--tukul-muted)]">
-                Funds are secured and released by milestone approvals.
-              </div>
-              <div className="mt-3 inline-flex items-center justify-center rounded-full bg-[var(--tukul-accent)] px-3 py-2 text-xs font-semibold text-white">
-                Release payment
-              </div>
-            </div>
+          <div className="h-full w-full overflow-hidden rounded-[28px] border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_6%)] shadow-[0_30px_90px_rgba(0,0,0,0.10)]">
+            {videoUrl ? (
+              <video
+                className="h-full w-full object-cover"
+                src={videoUrl}
+                poster={posterUrl || undefined}
+                muted
+                loop
+                playsInline
+                autoPlay
+              />
+            ) : mockupUrl ? (
+              <img
+                src={mockupUrl}
+                alt="Tukul workflow preview"
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <div className="h-full w-full bg-[radial-gradient(circle_at_30%_15%,rgba(20,83,45,0.12),transparent_55%),radial-gradient(circle_at_75%_30%,rgba(0,0,0,0.06),transparent_60%),linear-gradient(to_bottom,rgba(247,247,245,0.35),rgba(247,247,245,0.75))]" />
+            )}
           </div>
         </div>
       </div>
