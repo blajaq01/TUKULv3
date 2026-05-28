@@ -18,6 +18,14 @@ type LandingContent = {
     videoUrl: string;
     videoPosterUrl: string;
     steps: string[];
+    stepImageUrls: string[];
+    testimonialPhotoUrl: string;
+    testimonialQuote: string;
+    testimonialAuthorName: string;
+    testimonialAuthorTitle: string;
+    testimonialProjectsFunded: string;
+    testimonialOnTimeRate: string;
+    testimonialAverageRating: string;
   };
   trust: {
     verifiedContractors: string;
@@ -47,6 +55,14 @@ const defaultContent: LandingContent = {
     videoUrl: "",
     videoPosterUrl: "",
     steps: ["Post project", "Receive bids", "Compare", "Approve milestones", "Release payments"],
+    stepImageUrls: ["", "", "", "", ""],
+    testimonialPhotoUrl: "",
+    testimonialQuote: "“Tukul made our renovation simple, transparent, and stress-free.”",
+    testimonialAuthorName: "Sarah M.",
+    testimonialAuthorTitle: "Homeowner",
+    testimonialProjectsFunded: "$2.4M+",
+    testimonialOnTimeRate: "98%",
+    testimonialAverageRating: "4.8★",
   },
   trust: {
     verifiedContractors: "—",
@@ -190,6 +206,8 @@ export default function AdminLandingPage() {
         "Photorealistic background image: modern Malaysian house exterior / renovation setting. Soft morning light, warm neutral tones. Slight haze. Clean composition with lots of negative space on the left for marketing text. No busy clutter. 16:9.",
       heroMockup:
         "Generate a premium SaaS product mockup image (not a screenshot) for a construction project workflow: project scope card with photos and categories, bids list with ratings and pricing, milestones with approval states, escrow payment card. Floating layered cards, rounded corners, subtle shadows, calm off-white UI, deep muted green accent only. 16:9 or wide aspect.",
+      heroStep:
+        "Generate a clean, premium UI card image for ONE step of a construction workflow (single tall card). Minimalist, rounded corners, off-white background, deep muted green accent only, subtle shadows. Ensure the UI looks like a real product screen. No stock photos; only UI elements.",
       howItWorksImage:
         "Photorealistic image: modern Malaysian residential renovation site. Warm, authentic, professional. Contractor and property owner reviewing plans/tablet. Clean composition, shallow depth of field, natural light. Avoid cheesy stock look. 16:9, premium tone.",
       contractorImage:
@@ -556,6 +574,183 @@ export default function AdminLandingPage() {
                 loading="lazy"
               />
             ) : null}
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-xl border border-black/5 bg-zinc-50 p-4">
+          <div className="text-sm font-semibold">Hero workflow step images (5)</div>
+          <div className="mt-2 text-sm text-zinc-600">
+            These are used in the hero’s 5-step workflow showcase (hover to glow).
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <div key={idx} className="rounded-xl border border-black/5 bg-white p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-semibold text-zinc-700">Step {idx + 1}</div>
+                  <UploadPicker
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={isLoading || isSaving}
+                    label="Upload"
+                    onPick={async (file) => {
+                      setError(null);
+                      setNotice(null);
+                      setIsSaving(true);
+                      try {
+                        const { publicUrl } = await uploadLandingAsset({
+                          file,
+                          path: `hero/steps/${idx + 1}`,
+                        });
+                        setContent((c) => {
+                          const next = [...c.hero.stepImageUrls];
+                          next[idx] = publicUrl;
+                          return { ...c, hero: { ...c.hero, stepImageUrls: next } };
+                        });
+                        setNotice("Step image uploaded. Save changes to publish.");
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : "Upload failed.");
+                      } finally {
+                        setIsSaving(false);
+                      }
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="mt-2 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-xs hover:bg-zinc-50 disabled:opacity-60"
+                  disabled={isLoading || isSaving}
+                  onClick={() => {
+                    navigator.clipboard?.writeText(generationPrompts.heroStep).catch(() => {});
+                    setNotice("Step UI prompt copied.");
+                  }}
+                >
+                  Copy AI prompt
+                </button>
+                {content.hero.stepImageUrls[idx] ? (
+                  <img
+                    className="mt-3 w-full rounded-lg border border-black/5 bg-white"
+                    src={content.hero.stepImageUrls[idx]}
+                    alt={`Step ${idx + 1} preview`}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="mt-3 rounded-lg border border-black/5 bg-zinc-50 px-3 py-6 text-center text-xs text-zinc-500">
+                    Not uploaded
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-xl border border-black/5 bg-zinc-50 p-4">
+          <div className="text-sm font-semibold">Hero testimonial strip</div>
+          <div className="mt-2 text-sm text-zinc-600">
+            This appears under the workflow cards, matching the reference layout (project photo + quote + metrics).
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-black/5 bg-white p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm font-semibold">Project photo</div>
+                <UploadPicker
+                  accept="image/png,image/jpeg,image/webp"
+                  disabled={isLoading || isSaving}
+                  label="Upload"
+                  onPick={async (file) => {
+                    setError(null);
+                    setNotice(null);
+                    setIsSaving(true);
+                    try {
+                      const { publicUrl } = await uploadLandingAsset({ file, path: "hero/testimonial/photo" });
+                      setContent((c) => ({ ...c, hero: { ...c.hero, testimonialPhotoUrl: publicUrl } }));
+                      setNotice("Testimonial photo uploaded. Save changes to publish.");
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : "Upload failed.");
+                    } finally {
+                      setIsSaving(false);
+                    }
+                  }}
+                />
+              </div>
+              {content.hero.testimonialPhotoUrl ? (
+                <img
+                  className="mt-3 w-full rounded-lg border border-black/5 bg-white"
+                  src={content.hero.testimonialPhotoUrl}
+                  alt="Testimonial project photo preview"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="mt-3 rounded-lg border border-black/5 bg-zinc-50 px-3 py-6 text-center text-sm text-zinc-500">
+                  Not uploaded
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-black/5 bg-white p-4">
+              <label className="text-sm font-semibold">Quote</label>
+              <textarea
+                className="mt-2 w-full resize-none rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-black/20"
+                rows={4}
+                value={content.hero.testimonialQuote}
+                onChange={(e) => setContent((c) => ({ ...c, hero: { ...c.hero, testimonialQuote: e.target.value } }))}
+              />
+
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="text-sm font-semibold">Author name</label>
+                  <input
+                    className="mt-2 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-black/20"
+                    value={content.hero.testimonialAuthorName}
+                    onChange={(e) =>
+                      setContent((c) => ({ ...c, hero: { ...c.hero, testimonialAuthorName: e.target.value } }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold">Author title</label>
+                  <input
+                    className="mt-2 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-black/20"
+                    value={content.hero.testimonialAuthorTitle}
+                    onChange={(e) =>
+                      setContent((c) => ({ ...c, hero: { ...c.hero, testimonialAuthorTitle: e.target.value } }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <div>
+                  <label className="text-sm font-semibold">Projects funded</label>
+                  <input
+                    className="mt-2 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-black/20"
+                    value={content.hero.testimonialProjectsFunded}
+                    onChange={(e) =>
+                      setContent((c) => ({ ...c, hero: { ...c.hero, testimonialProjectsFunded: e.target.value } }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold">On-time rate</label>
+                  <input
+                    className="mt-2 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-black/20"
+                    value={content.hero.testimonialOnTimeRate}
+                    onChange={(e) =>
+                      setContent((c) => ({ ...c, hero: { ...c.hero, testimonialOnTimeRate: e.target.value } }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold">Average rating</label>
+                  <input
+                    className="mt-2 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-black/20"
+                    value={content.hero.testimonialAverageRating}
+                    onChange={(e) =>
+                      setContent((c) => ({ ...c, hero: { ...c.hero, testimonialAverageRating: e.target.value } }))
+                    }
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

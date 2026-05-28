@@ -491,7 +491,14 @@ function AdminIntegrationsLoader({ userId, isAdmin }: { userId: string; isAdmin:
                         supabaseProjectId: supabaseProjectId.trim(),
                       }),
                     });
-                    const json = (await res.json()) as { ok?: boolean; error?: string };
+                    const text = await res.text();
+                    const json = (() => {
+                      try {
+                        return JSON.parse(text) as { ok?: boolean; error?: string };
+                      } catch {
+                        return { error: text || "Unexpected response." } as { error?: string };
+                      }
+                    })();
                     if (!res.ok) throw new Error(json.error || "Failed to write .env.local.");
                     setNotice("Saved to apps/web/.env.local. Restart the dev server to apply.");
                   } catch (err) {

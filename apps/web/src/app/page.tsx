@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Faq } from "@/components/landing/Faq";
+import { HeroWorkflow } from "@/components/landing/HeroWorkflow";
 import { LandingNav } from "@/components/landing/LandingNav";
 import { Reveal } from "@/components/landing/Reveal";
 import { supabase } from "@/lib/supabase/client";
@@ -20,6 +21,14 @@ type LandingContent = {
     videoUrl?: string;
     videoPosterUrl?: string;
     steps?: string[];
+    stepImageUrls?: string[];
+    testimonialPhotoUrl?: string;
+    testimonialQuote?: string;
+    testimonialAuthorName?: string;
+    testimonialAuthorTitle?: string;
+    testimonialProjectsFunded?: string;
+    testimonialOnTimeRate?: string;
+    testimonialAverageRating?: string;
   };
   trust?: {
     verifiedContractors?: string;
@@ -58,18 +67,15 @@ export default async function Home() {
       <main className="flex-1">
         <section className="relative overflow-hidden">
           <LandingHeroBackground content={content} />
-          <div className="mx-auto w-full max-w-6xl px-6 pt-14 sm:pt-16 md:pt-20 lg:pt-24">
-            <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
-              <Reveal className="lg:pr-6">
+          <div className="mx-auto w-full max-w-7xl px-6 pt-14 sm:pt-16 md:pt-20 lg:pt-24 xl:max-w-[86rem]">
+            <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.28fr)] lg:items-center">
+              <Reveal className="lg:pr-6 xl:pr-10">
                 <LandingHero content={content} />
               </Reveal>
-              <Reveal delayMs={90} className="lg:pl-6">
-                <LandingHeroMedia content={content} />
+              <Reveal delayMs={90} className="lg:pl-6 xl:pl-10">
+                <LandingHeroWorkflow content={content} />
               </Reveal>
             </div>
-            <Reveal delayMs={140} className="pt-10 pb-12 md:pt-12 md:pb-14">
-              <LandingHeroStepper content={content} />
-            </Reveal>
             <Reveal delayMs={170} className="pb-16 md:pb-20">
               <LandingTrust content={content} />
             </Reveal>
@@ -289,21 +295,101 @@ function LandingHero({ content }: { content: LandingContent }) {
         </a>
       </div>
 
-      <div className="mt-8 grid gap-3 sm:grid-cols-2">
+      <div className="mt-10 grid gap-6 sm:grid-cols-4">
         {[
-          { t: "Structured scopes", d: "Clear details lead to better bids." },
-          { t: "Competitive bids", d: "Qualified contractors, transparent pricing." },
-          { t: "Milestone approvals", d: "Stay in control with progress tracking." },
-          { t: "Secure payments", d: "Escrow-style release reduces anxiety." },
-        ].map((b) => (
-          <div
-            key={b.t}
-            className="flex items-start gap-3 rounded-3xl border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_12%)] px-5 py-4 shadow-[0_16px_50px_rgba(0,0,0,0.06)]"
-          >
-            <div className="mt-1 h-8 w-8 shrink-0 rounded-2xl border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-accent),transparent_88%)]" />
-            <div>
-              <div className="text-sm font-semibold text-[var(--foreground)]">{b.t}</div>
-              <div className="mt-1 text-sm leading-6 text-[var(--tukul-muted)]">{b.d}</div>
+          {
+            label: "Structured scope\nwith photos",
+            icon: (
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none">
+                <path
+                  d="M7 3h10v18H7V3Z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M9.5 8h5M9.5 11h5M9.5 14h3.5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ),
+          },
+          {
+            label: "Competitive bids\nfrom verified contractors",
+            icon: (
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none">
+                <path
+                  d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                />
+                <path
+                  d="M3 21a7 7 0 0 1 13-4"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="m19 14 1 2 2 .3-1.5 1.5.4 2.2-1.9-1-1.9 1 .4-2.2L16 16.3l2-.3 1-2Z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            ),
+          },
+          {
+            label: "Milestone approvals\n& escrow protection",
+            icon: (
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none">
+                <path
+                  d="M12 3 20 7v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4Z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="m9 12 2 2 4-5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            ),
+          },
+          {
+            label: "Transparent,\nsecure & simple",
+            icon: (
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none">
+                <path
+                  d="M7 10V8a5 5 0 0 1 10 0v2"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M6 10h12v10H6V10Z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            ),
+          },
+        ].map((i) => (
+          <div key={i.label} className="flex items-start gap-3 text-[var(--tukul-accent)]">
+            <div className="mt-0.5 rounded-2xl border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_10%)] p-3">
+              {i.icon}
+            </div>
+            <div className="text-[12px] font-semibold uppercase tracking-wide text-[var(--tukul-muted)]">
+              {i.label.split("\n").map((line, idx) => (
+                <span key={idx} className="block">
+                  {line}
+                </span>
+              ))}
             </div>
           </div>
         ))}
@@ -312,52 +398,24 @@ function LandingHero({ content }: { content: LandingContent }) {
   );
 }
 
-function LandingHeroMedia({ content }: { content: LandingContent }) {
+function LandingHeroWorkflow({ content }: { content: LandingContent }) {
   const hero = content.hero ?? {};
-  const backgroundUrl = hero.backgroundUrl?.trim();
-  const mockupUrl = hero.mockupUrl?.trim();
-  const videoUrl = hero.videoUrl?.trim();
-  const posterUrl = hero.videoPosterUrl?.trim();
-
+  const labels = (hero.steps ?? []).filter(Boolean);
+  const imageUrls = (hero.stepImageUrls ?? []).filter(Boolean);
   return (
-    <div className="relative overflow-hidden rounded-[36px] border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_10%)] shadow-[0_40px_120px_rgba(0,0,0,0.10)]">
-      <div className="relative aspect-[16/11] w-full">
-        {backgroundUrl ? (
-          <img
-            src={backgroundUrl}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover opacity-55 blur-[2px]"
-            loading="lazy"
-          />
-        ) : null}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,color-mix(in_oklab,var(--tukul-accent),transparent_86%),transparent_58%),linear-gradient(to_bottom,rgba(247,247,245,0.92),rgba(247,247,245,0.46),rgba(247,247,245,0.78))]" />
-
-        <div className="absolute inset-0 p-5 sm:p-7">
-          <div className="h-full w-full overflow-hidden rounded-[28px] border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_6%)] shadow-[0_30px_90px_rgba(0,0,0,0.10)]">
-            {videoUrl ? (
-              <video
-                className="h-full w-full object-cover"
-                src={videoUrl}
-                poster={posterUrl || undefined}
-                muted
-                loop
-                playsInline
-                autoPlay
-              />
-            ) : mockupUrl ? (
-              <img
-                src={mockupUrl}
-                alt="Tukul workflow preview"
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="h-full w-full bg-[radial-gradient(circle_at_30%_15%,rgba(20,83,45,0.12),transparent_55%),radial-gradient(circle_at_75%_30%,rgba(0,0,0,0.06),transparent_60%),linear-gradient(to_bottom,rgba(247,247,245,0.35),rgba(247,247,245,0.75))]" />
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    <HeroWorkflow
+      labels={labels}
+      imageUrls={imageUrls}
+      testimonial={{
+        photoUrl: hero.testimonialPhotoUrl ?? "",
+        quote: hero.testimonialQuote ?? "",
+        authorName: hero.testimonialAuthorName ?? "",
+        authorTitle: hero.testimonialAuthorTitle ?? "",
+        projectsFunded: hero.testimonialProjectsFunded ?? "",
+        onTimeRate: hero.testimonialOnTimeRate ?? "",
+        averageRating: hero.testimonialAverageRating ?? "",
+      }}
+    />
   );
 }
 
@@ -378,29 +436,6 @@ function LandingHeroBackground({ content }: { content: LandingContent }) {
       ) : null}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(247,247,245,0.92)_0%,rgba(247,247,245,0.84)_40%,rgba(247,247,245,0.74)_100%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(0,0,0,0.04),transparent_45%)]" />
-    </div>
-  );
-}
-
-function LandingHeroStepper({ content }: { content: LandingContent }) {
-  const steps = (content.hero?.steps ?? []).filter(Boolean);
-  const normalized =
-    steps.length >= 5
-      ? steps.slice(0, 5)
-      : ["Post project", "Receive bids", "Compare", "Approve milestones", "Release payments"];
-
-  return (
-    <div className="rounded-[28px] border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_12%)] px-4 py-4 shadow-[0_20px_70px_rgba(0,0,0,0.08)] sm:px-6">
-      <div className="grid gap-3 md:grid-cols-5">
-        {normalized.map((label, idx) => (
-          <div key={`${idx}-${label}`} className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--tukul-accent)] text-sm font-semibold text-white">
-              {idx + 1}
-            </div>
-            <div className="text-sm font-semibold text-[var(--foreground)]">{label}</div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
