@@ -73,12 +73,25 @@ async function uploadLandingAsset(args: {
   path: string;
 }): Promise<{ publicUrl: string }> {
   const { file, path } = args;
-  const { error } = await supabase.storage.from("landing").upload(path, file, { upsert: true });
-  if (error) throw error;
-  const { data } = supabase.storage.from("landing").getPublicUrl(path);
-  const url = (data?.publicUrl ?? "").trim();
-  if (!url) throw new Error("Failed to resolve public URL for uploaded asset.");
-  return { publicUrl: `${url}?v=${Date.now()}` };
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  const token = sessionData.session?.access_token ?? "";
+  if (!token) throw new Error("Not signed in.");
+
+  const form = new FormData();
+  form.set("file", file);
+  form.set("path", path);
+
+  const res = await fetch("/api/landing/upload", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  const json = (await res.json()) as { publicUrl?: string; error?: string };
+  if (!res.ok) throw new Error(json.error || "Upload failed.");
+  const publicUrl = (json.publicUrl ?? "").trim();
+  if (!publicUrl) throw new Error("Upload succeeded but no URL returned.");
+  return { publicUrl };
 }
 
 export default function AdminLandingPage() {
