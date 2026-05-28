@@ -148,7 +148,7 @@ function AdminContractorsLoader({ adminId }: { adminId: string }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Contractor verification</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Contractor verification</h1>
         <p className="text-sm text-zinc-600">
           Review contractor submissions and approve/reject verification.
         </p>
@@ -160,9 +160,10 @@ function AdminContractorsLoader({ adminId }: { adminId: string }) {
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-black/5 bg-white">
-        <div className="border-b border-black/5 px-6 py-4 text-sm font-medium text-zinc-700">
-          {isLoading ? "Loading…" : `${rows.length} contractor profile(s)`}
+      <div className="rounded-3xl border border-black/5 bg-white">
+        <div className="flex items-center justify-between gap-3 border-b border-black/5 px-6 py-4">
+          <div className="text-sm font-medium text-zinc-700">{isLoading ? "Loading…" : "Verification queue"}</div>
+          <div className="text-xs text-zinc-500">{isLoading ? "—" : `${rows.length} profile(s)`}</div>
         </div>
         <div className="divide-y divide-black/5">
           {rows.map((r) => (
@@ -185,7 +186,7 @@ function AdminContractorsLoader({ adminId }: { adminId: string }) {
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="rounded-lg border border-black/10 px-3 py-1.5 text-sm hover:bg-zinc-50 disabled:opacity-60"
+                    className="rounded-xl border border-black/10 px-3 py-2 text-sm hover:bg-zinc-50 disabled:opacity-60"
                     disabled={isSaving || r.verification_status !== "submitted"}
                     onClick={async () => setDecision(r.contractor_id, "rejected")}
                   >
@@ -193,7 +194,7 @@ function AdminContractorsLoader({ adminId }: { adminId: string }) {
                   </button>
                   <button
                     type="button"
-                    className="rounded-lg bg-black px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+                    className="rounded-xl bg-black px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
                     disabled={isSaving || r.verification_status !== "submitted"}
                     onClick={async () => setDecision(r.contractor_id, "approved")}
                   >

@@ -90,12 +90,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(data as UserProfile);
       });
 
-    supabase
-      .from("user_role_assignments")
-      .select("role_id")
-      .eq("user_id", userId)
-      .is("deleted_at", null)
-      .then(async ({ data, error }) => {
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("user_role_assignments")
+          .select("role_id")
+          .eq("user_id", userId)
+          .is("deleted_at", null);
         if (!isMounted) return;
         if (error) {
           setPermissions([]);
@@ -119,11 +120,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           new Set((perms ?? []).map((p) => (p as { permission_code: string }).permission_code).filter(Boolean)),
         );
         setPermissions(codes);
-      })
-      .catch(() => {
+      } catch {
         if (!isMounted) return;
         setPermissions([]);
-      });
+      }
+    })();
 
     return () => {
       isMounted = false;

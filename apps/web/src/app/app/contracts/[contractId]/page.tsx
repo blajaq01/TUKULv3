@@ -539,26 +539,38 @@ function ContractLoader({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-black/5 bg-white p-6">
+      <div className="rounded-3xl border border-black/5 bg-white p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-xl font-semibold tracking-tight">Contract</h1>
-            <div className="mt-1 text-sm text-zinc-600">
+            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Contract</h1>
+            <div className="mt-2 text-sm text-zinc-600">
               Project:{" "}
               <Link className="underline" href={`/app/projects/${project.id}`}>
                 {project.title}
               </Link>{" "}
-              • Status: {project.status}
+              • Status: {project.status.replaceAll("_", " ")}
             </div>
-            <div className="mt-3 text-sm text-zinc-700">
-              Agreed price: <span className="font-semibold">RM {Number(contract.agreed_price).toFixed(2)}</span>
+            <div className="mt-6 grid gap-3 md:grid-cols-3">
+              <div className="rounded-2xl bg-zinc-50 p-5">
+                <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Agreed price</div>
+                <div className="mt-2 text-lg font-semibold text-zinc-900">
+                  RM {Number(contract.agreed_price).toFixed(2)}
+                </div>
+              </div>
+              <div className="rounded-2xl bg-zinc-50 p-5">
+                <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Milestones total</div>
+                <div className="mt-2 text-lg font-semibold text-zinc-900">RM {totalMilestones.toFixed(2)}</div>
+              </div>
+              <div className="rounded-2xl bg-zinc-50 p-5">
+                <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Project</div>
+                <div className="mt-2 text-sm font-semibold text-zinc-900">{project.id}</div>
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="text-sm text-zinc-600">Total milestones: RM {totalMilestones.toFixed(2)}</div>
             <button
               type="button"
-              className="rounded-lg bg-black px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+              className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
               disabled={isSaving || !canCompleteProject}
               onClick={async () => {
                 setIsSaving(true);
@@ -597,8 +609,11 @@ function ContractLoader({
         />
       ) : null}
 
-      <div className="rounded-2xl border border-black/5 bg-white">
-        <div className="border-b border-black/5 px-6 py-4 text-sm font-semibold">Milestones</div>
+      <div className="rounded-3xl border border-black/5 bg-white">
+        <div className="flex items-center justify-between gap-3 border-b border-black/5 px-6 py-4">
+          <div className="text-sm font-semibold text-zinc-700">Milestones</div>
+          <div className="text-xs text-zinc-500">{milestones.length} total</div>
+        </div>
         <div className="divide-y divide-black/5">
           {milestones.map((m) => (
             <MilestoneRowView
@@ -637,8 +652,11 @@ function ContractLoader({
         setSaving={setIsSaving}
       />
 
-      <div className="rounded-2xl border border-black/5 bg-white">
-        <div className="border-b border-black/5 px-6 py-4 text-sm font-semibold">Ledger</div>
+      <div className="rounded-3xl border border-black/5 bg-white">
+        <div className="flex items-center justify-between gap-3 border-b border-black/5 px-6 py-4">
+          <div className="text-sm font-semibold text-zinc-700">Ledger</div>
+          <div className="text-xs text-zinc-500">{ledgerEntries.length} entries</div>
+        </div>
         <div className="divide-y divide-black/5">
           {ledgerEntries.map((l) => (
             <div key={l.id} className="px-6 py-4 text-sm text-zinc-700">
