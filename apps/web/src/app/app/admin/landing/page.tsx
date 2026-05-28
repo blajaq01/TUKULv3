@@ -13,8 +13,11 @@ type LandingContent = {
     primaryCtaHref: string;
     secondaryCtaLabel: string;
     secondaryCtaHref: string;
+    backgroundUrl: string;
+    mockupUrl: string;
     videoUrl: string;
     videoPosterUrl: string;
+    steps: string[];
   };
   trust: {
     verifiedContractors: string;
@@ -39,8 +42,11 @@ const defaultContent: LandingContent = {
     primaryCtaHref: "/auth",
     secondaryCtaLabel: "Explore the marketplace",
     secondaryCtaHref: "#marketplace",
+    backgroundUrl: "",
+    mockupUrl: "",
     videoUrl: "",
     videoPosterUrl: "",
+    steps: ["Post project", "Receive bids", "Compare", "Approve milestones", "Release payments"],
   },
   trust: {
     verifiedContractors: "—",
@@ -99,7 +105,11 @@ export default function AdminLandingPage() {
       if (loadError) throw loadError;
       const value = data?.value;
       if (isLandingContent(value)) {
-        setContent({ ...defaultContent, ...value });
+        setContent({
+          hero: { ...defaultContent.hero, ...(value.hero ?? {}) },
+          trust: { ...defaultContent.trust, ...(value.trust ?? {}) },
+          sections: { ...defaultContent.sections, ...(value.sections ?? {}) },
+        });
       } else {
         setContent(defaultContent);
       }
@@ -124,6 +134,10 @@ export default function AdminLandingPage() {
     () => ({
       heroVideo:
         "Generate a premium SaaS-style hero video for a construction marketplace platform. Calm, modern, minimalist enterprise UI. Scene: property owner posts a structured scope (photos + categories), contractors submit bids, owner compares bids, milestone approvals, escrow-style release. Clean typography, soft off-white background, single deep construction green accent. Cinematic but subtle, no busy motion. 8–12 seconds, loopable, 16:9.",
+      heroBackground:
+        "Photorealistic background image: modern Malaysian house exterior / renovation setting. Soft morning light, warm neutral tones. Slight haze. Clean composition with lots of negative space on the left for marketing text. No busy clutter. 16:9.",
+      heroMockup:
+        "Generate a premium SaaS product mockup image (not a screenshot) for a construction project workflow: project scope card with photos and categories, bids list with ratings and pricing, milestones with approval states, escrow payment card. Floating layered cards, rounded corners, subtle shadows, calm off-white UI, deep muted green accent only. 16:9 or wide aspect.",
       howItWorksImage:
         "Photorealistic image: modern Malaysian residential renovation site. Warm, authentic, professional. Contractor and property owner reviewing plans/tablet. Clean composition, shallow depth of field, natural light. Avoid cheesy stock look. 16:9, premium tone.",
       contractorImage:
@@ -197,6 +211,9 @@ export default function AdminLandingPage() {
               }
               disabled={isLoading || isSaving}
             />
+            <div className="text-xs text-zinc-500">
+              Tip: wrap the emphasized phrase with {"{ }"} to highlight it in green.
+            </div>
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Primary CTA</label>
@@ -265,9 +282,130 @@ export default function AdminLandingPage() {
               />
             </div>
           </div>
+          <div className="space-y-1.5 md:col-span-2">
+            <label className="text-sm font-medium">Workflow steps (5)</label>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <input
+                  key={idx}
+                  className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30 disabled:bg-zinc-50"
+                  value={content.hero.steps[idx] ?? ""}
+                  onChange={(e) =>
+                    setContent((c) => {
+                      const next = [...(c.hero.steps ?? [])];
+                      next[idx] = e.target.value;
+                      return { ...c, hero: { ...c.hero, steps: next } };
+                    })
+                  }
+                  disabled={isLoading || isSaving}
+                  placeholder={`Step ${idx + 1}`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <div className="rounded-xl border border-black/5 bg-zinc-50 p-4">
+            <div className="text-sm font-semibold">Hero background image</div>
+            <div className="mt-2 text-sm text-zinc-600">
+              Upload a calm architectural background. It will be blurred and softened behind the hero.
+            </div>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                disabled={isLoading || isSaving}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setError(null);
+                  setNotice(null);
+                  setIsSaving(true);
+                  try {
+                    const { publicUrl } = await uploadLandingAsset({ file, path: "hero/background" });
+                    setContent((c) => ({ ...c, hero: { ...c.hero, backgroundUrl: publicUrl } }));
+                    setNotice("Background uploaded. Save changes to publish.");
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Upload failed.");
+                  } finally {
+                    setIsSaving(false);
+                    e.target.value = "";
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="rounded-lg border border-black/10 bg-white px-3 py-2 text-sm hover:bg-zinc-50 disabled:opacity-60"
+                disabled={isLoading || isSaving}
+                onClick={() => {
+                  navigator.clipboard?.writeText(generationPrompts.heroBackground).catch(() => {});
+                  setNotice("Background prompt copied.");
+                }}
+              >
+                Copy AI prompt
+              </button>
+            </div>
+            {content.hero.backgroundUrl ? (
+              <img
+                className="mt-4 w-full rounded-xl border border-black/5 bg-white"
+                src={content.hero.backgroundUrl}
+                alt="Hero background preview"
+                loading="lazy"
+              />
+            ) : null}
+          </div>
+
+          <div className="rounded-xl border border-black/5 bg-zinc-50 p-4">
+            <div className="text-sm font-semibold">Hero workflow mockup (image)</div>
+            <div className="mt-2 text-sm text-zinc-600">
+              Upload a wide product-workflow mockup image with floating cards.
+            </div>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                disabled={isLoading || isSaving}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setError(null);
+                  setNotice(null);
+                  setIsSaving(true);
+                  try {
+                    const { publicUrl } = await uploadLandingAsset({ file, path: "hero/mockup" });
+                    setContent((c) => ({ ...c, hero: { ...c.hero, mockupUrl: publicUrl } }));
+                    setNotice("Mockup uploaded. Save changes to publish.");
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Upload failed.");
+                  } finally {
+                    setIsSaving(false);
+                    e.target.value = "";
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="rounded-lg border border-black/10 bg-white px-3 py-2 text-sm hover:bg-zinc-50 disabled:opacity-60"
+                disabled={isLoading || isSaving}
+                onClick={() => {
+                  navigator.clipboard?.writeText(generationPrompts.heroMockup).catch(() => {});
+                  setNotice("Mockup prompt copied.");
+                }}
+              >
+                Copy AI prompt
+              </button>
+            </div>
+            {content.hero.mockupUrl ? (
+              <img
+                className="mt-4 w-full rounded-xl border border-black/5 bg-white"
+                src={content.hero.mockupUrl}
+                alt="Hero mockup preview"
+                loading="lazy"
+              />
+            ) : null}
+          </div>
+
           <div className="rounded-xl border border-black/5 bg-zinc-50 p-4">
             <div className="text-sm font-semibold">Hero video</div>
             <div className="mt-2 text-sm text-zinc-600">
@@ -485,4 +623,3 @@ export default function AdminLandingPage() {
     </div>
   );
 }
-

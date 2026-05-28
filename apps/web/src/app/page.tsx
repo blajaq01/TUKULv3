@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { Faq } from "@/components/landing/Faq";
 import { LandingNav } from "@/components/landing/LandingNav";
@@ -14,8 +15,11 @@ type LandingContent = {
     primaryCtaHref?: string;
     secondaryCtaLabel?: string;
     secondaryCtaHref?: string;
+    backgroundUrl?: string;
+    mockupUrl?: string;
     videoUrl?: string;
     videoPosterUrl?: string;
+    steps?: string[];
   };
   trust?: {
     verifiedContractors?: string;
@@ -52,16 +56,24 @@ export default async function Home() {
       <LandingNav />
 
       <main className="flex-1">
-        <section className="mx-auto w-full max-w-6xl px-6 pt-14 sm:pt-16 md:pt-20 lg:pt-24">
-          <Reveal>
-            <div className="mx-auto max-w-3xl text-center">
-              <LandingHero content={content} />
+        <section className="relative overflow-hidden">
+          <LandingHeroBackground content={content} />
+          <div className="mx-auto w-full max-w-6xl px-6 pt-14 sm:pt-16 md:pt-20 lg:pt-24">
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+              <Reveal className="lg:pr-6">
+                <LandingHero content={content} />
+              </Reveal>
+              <Reveal delayMs={90} className="lg:pl-6">
+                <LandingHeroMedia content={content} />
+              </Reveal>
             </div>
-          </Reveal>
-
-          <LandingHeroMedia content={content} />
-
-          <LandingTrust content={content} />
+            <Reveal delayMs={140} className="pt-10 pb-12 md:pt-12 md:pb-14">
+              <LandingHeroStepper content={content} />
+            </Reveal>
+            <Reveal delayMs={170} className="pb-16 md:pb-20">
+              <LandingTrust content={content} />
+            </Reveal>
+          </div>
         </section>
 
         <div className="mx-auto w-full max-w-6xl px-6">
@@ -234,7 +246,7 @@ export default async function Home() {
 function LandingHero({ content }: { content: LandingContent }) {
   const hero = content.hero ?? {};
 
-  const headline = hero.headline ?? "Construction projects,\nfinally simplified.";
+  const headline = hero.headline ?? "Better projects.\n{Built together}.";
   const subheadline =
     hero.subheadline ??
     "A modern marketplace built for property owners and contractors—verified profiles, transparent bidding, and milestone approvals with escrow-style releases.";
@@ -247,15 +259,19 @@ function LandingHero({ content }: { content: LandingContent }) {
 
   return (
     <>
-      <h1 className="text-pretty font-semibold tracking-tight text-[clamp(2.25rem,5.2vw,5.25rem)] leading-[0.98]">
+      <div className="inline-flex items-center rounded-full border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_10%)] px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--tukul-muted)]">
+        Premium construction marketplace • Built on trust
+      </div>
+
+      <h1 className="mt-6 text-pretty tracking-tight leading-[0.98] text-[clamp(2.4rem,5.2vw,5.3rem)] font-semibold font-[family:var(--font-serif)]">
         {lines.map((line, idx) => (
-          <span key={idx}>
-            {line}
-            {idx !== lines.length - 1 ? <br /> : null}
+          <span key={idx} className="block">
+            {renderHeadlineAccent(line)}
           </span>
         ))}
       </h1>
-      <p className="mx-auto mt-5 max-w-[44rem] text-pretty text-[17px] leading-8 text-[var(--tukul-muted)] md:text-[18px]">
+
+      <p className="mt-5 max-w-[38rem] text-pretty text-[17px] leading-8 text-[var(--tukul-muted)] md:text-[18px]">
         {subheadline}
       </p>
       <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
@@ -273,8 +289,24 @@ function LandingHero({ content }: { content: LandingContent }) {
         </a>
       </div>
 
-      <div className="mt-6 text-sm text-[var(--tukul-muted)]">
-        Designed to feel calm, premium, and investor-ready.
+      <div className="mt-8 grid gap-3 sm:grid-cols-2">
+        {[
+          { t: "Structured scopes", d: "Clear details lead to better bids." },
+          { t: "Competitive bids", d: "Qualified contractors, transparent pricing." },
+          { t: "Milestone approvals", d: "Stay in control with progress tracking." },
+          { t: "Secure payments", d: "Escrow-style release reduces anxiety." },
+        ].map((b) => (
+          <div
+            key={b.t}
+            className="flex items-start gap-3 rounded-3xl border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_12%)] px-5 py-4 shadow-[0_16px_50px_rgba(0,0,0,0.06)]"
+          >
+            <div className="mt-1 h-8 w-8 shrink-0 rounded-2xl border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-accent),transparent_88%)]" />
+            <div>
+              <div className="text-sm font-semibold text-[var(--foreground)]">{b.t}</div>
+              <div className="mt-1 text-sm leading-6 text-[var(--tukul-muted)]">{b.d}</div>
+            </div>
+          </div>
+        ))}
       </div>
     </>
   );
@@ -282,67 +314,154 @@ function LandingHero({ content }: { content: LandingContent }) {
 
 function LandingHeroMedia({ content }: { content: LandingContent }) {
   const hero = content.hero ?? {};
+  const backgroundUrl = hero.backgroundUrl?.trim();
+  const mockupUrl = hero.mockupUrl?.trim();
   const videoUrl = hero.videoUrl?.trim();
   const posterUrl = hero.videoPosterUrl?.trim();
 
   return (
-    <Reveal delayMs={120} className="mt-12 md:mt-14">
-      <div className="overflow-hidden rounded-[32px] border border-[var(--tukul-border)] bg-[var(--tukul-surface)] shadow-[0_30px_90px_rgba(0,0,0,0.08)]">
-        <div className="relative aspect-video w-full">
-          {videoUrl ? (
-            <video
-              className="absolute inset-0 h-full w-full object-cover"
-              src={videoUrl}
-              poster={posterUrl || undefined}
-              muted
-              loop
-              playsInline
-              autoPlay
-            />
-          ) : (
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,color-mix(in_oklab,var(--tukul-accent),transparent_84%),transparent_60%),radial-gradient(circle_at_80%_20%,rgba(0,0,0,0.06),transparent_55%),linear-gradient(to_bottom,rgba(0,0,0,0.02),transparent_40%)]" />
-          )}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="mx-auto w-[min(92%,56rem)] rounded-[28px] border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_10%)] px-6 py-8 shadow-[0_18px_55px_rgba(0,0,0,0.10)] sm:px-10 sm:py-10">
-              <div className="flex items-center justify-center gap-4">
-                <Image
-                  src="/brand/tukul-mark.png"
-                  alt="Tukul"
-                  width={56}
-                  height={56}
-                  priority
-                  className="h-12 w-12"
+    <div className="relative overflow-hidden rounded-[36px] border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_10%)] shadow-[0_40px_120px_rgba(0,0,0,0.10)]">
+      <div className="relative aspect-[16/11] w-full">
+        {backgroundUrl ? (
+          <img
+            src={backgroundUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover opacity-70 blur-[1px]"
+            loading="lazy"
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,color-mix(in_oklab,var(--tukul-accent),transparent_86%),transparent_58%),linear-gradient(to_bottom,rgba(247,247,245,0.85),rgba(247,247,245,0.35),rgba(247,247,245,0.65))]" />
+
+        <div className="absolute inset-0 p-5 sm:p-7">
+          <div className="relative h-full w-full">
+            <div className="absolute left-0 top-0 w-[78%] rounded-[28px] border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_8%)] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.10)] sm:p-5">
+              {videoUrl ? (
+                <video
+                  className="aspect-[16/10] w-full rounded-2xl border border-[var(--tukul-border)] bg-black object-cover"
+                  src={videoUrl}
+                  poster={posterUrl || undefined}
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
                 />
-                <div className="text-left">
-                  <div className="text-sm font-semibold text-[var(--foreground)]">
-                    Marketplace + milestone workflow
-                  </div>
-                  <div className="mt-1 text-sm text-[var(--tukul-muted)]">
-                    {videoUrl
-                      ? "A quick platform walkthrough."
-                      : "Upload a cinematic construction walkthrough video in Admin → Landing."}
-                  </div>
+              ) : mockupUrl ? (
+                <img
+                  src={mockupUrl}
+                  alt="Tukul workflow preview"
+                  className="h-auto w-full rounded-2xl border border-[var(--tukul-border)] bg-white object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="flex aspect-[16/10] w-full items-center justify-center rounded-2xl border border-[var(--tukul-border)] bg-[var(--tukul-surface-2)] px-5 text-center text-sm leading-6 text-[var(--tukul-muted)]">
+                  Upload a hero workflow mockup (or video) in Admin → Landing.
+                </div>
+              )}
+            </div>
+
+            <div className="absolute right-0 top-5 w-[44%] rounded-[24px] border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_6%)] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.12)] sm:top-7">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold text-[var(--foreground)]">Bids received</div>
+                <div className="rounded-full bg-[color:color-mix(in_oklab,var(--tukul-accent),transparent_86%)] px-2 py-0.5 text-[10px] font-semibold text-[color:color-mix(in_oklab,var(--tukul-accent),black_20%)]">
+                  Recommended
                 </div>
               </div>
-              <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              <div className="mt-3 grid gap-2">
                 {[
-                  "Post a structured scope with photos and categories.",
-                  "Receive bids from verified contractors—compare clearly.",
-                  "Approve milestones before funds are released.",
-                ].map((text) => (
+                  { n: "Greenline Construction", p: "RM 28,450" },
+                  { n: "Summit Build", p: "RM 31,200" },
+                  { n: "Elevate Builders", p: "RM 29,900" },
+                ].map((r) => (
                   <div
-                    key={text}
-                    className="rounded-2xl border border-[var(--tukul-border)] bg-[var(--tukul-surface-2)] px-4 py-4 text-sm leading-6 text-[var(--tukul-muted)]"
+                    key={r.n}
+                    className="flex items-center justify-between rounded-2xl border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_12%)] px-3 py-2"
                   >
-                    {text}
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-semibold text-[var(--foreground)]">
+                        {r.n}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-[var(--tukul-muted)]">4.8 ★</div>
+                    </div>
+                    <div className="text-xs font-semibold text-[var(--foreground)]">{r.p}</div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            <div className="absolute right-0 bottom-0 w-[46%] rounded-[24px] border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_6%)] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.12)]">
+              <div className="text-xs font-semibold text-[var(--foreground)]">Escrow balance</div>
+              <div className="mt-1 text-2xl font-semibold tracking-tight">RM 22,825</div>
+              <div className="mt-1 text-[11px] leading-5 text-[var(--tukul-muted)]">
+                Funds are secured and released by milestone approvals.
+              </div>
+              <div className="mt-3 inline-flex items-center justify-center rounded-full bg-[var(--tukul-accent)] px-3 py-2 text-xs font-semibold text-white">
+                Release payment
               </div>
             </div>
           </div>
         </div>
       </div>
-    </Reveal>
+    </div>
+  );
+}
+
+function LandingHeroBackground({ content }: { content: LandingContent }) {
+  const hero = content.hero ?? {};
+  const backgroundUrl = hero.backgroundUrl?.trim();
+
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(20,83,45,0.10),transparent_55%),radial-gradient(circle_at_80%_20%,rgba(0,0,0,0.06),transparent_58%),linear-gradient(to_bottom,var(--background),rgba(247,247,245,0.75),var(--background))]" />
+      {backgroundUrl ? (
+        <img
+          src={backgroundUrl}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-30 blur-[6px]"
+          loading="lazy"
+        />
+      ) : null}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(247,247,245,0.92)_0%,rgba(247,247,245,0.84)_40%,rgba(247,247,245,0.74)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(0,0,0,0.04),transparent_45%)]" />
+    </div>
+  );
+}
+
+function LandingHeroStepper({ content }: { content: LandingContent }) {
+  const steps = (content.hero?.steps ?? []).filter(Boolean);
+  const normalized =
+    steps.length >= 5
+      ? steps.slice(0, 5)
+      : ["Post project", "Receive bids", "Compare", "Approve milestones", "Release payments"];
+
+  return (
+    <div className="rounded-[28px] border border-[var(--tukul-border)] bg-[color:color-mix(in_oklab,var(--tukul-surface),transparent_12%)] px-4 py-4 shadow-[0_20px_70px_rgba(0,0,0,0.08)] sm:px-6">
+      <div className="grid gap-3 md:grid-cols-5">
+        {normalized.map((label, idx) => (
+          <div key={`${idx}-${label}`} className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--tukul-accent)] text-sm font-semibold text-white">
+              {idx + 1}
+            </div>
+            <div className="text-sm font-semibold text-[var(--foreground)]">{label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function renderHeadlineAccent(line: string): ReactNode {
+  const open = line.indexOf("{");
+  const close = line.indexOf("}", open + 1);
+  if (open === -1 || close === -1) return line;
+  const before = line.slice(0, open);
+  const accent = line.slice(open + 1, close);
+  const after = line.slice(close + 1);
+  return (
+    <>
+      {before}
+      <span className="text-[var(--tukul-accent)]">{accent}</span>
+      {after}
+    </>
   );
 }
 
